@@ -105,6 +105,7 @@ def register():
             'rank': int(backjun_rank),
             'backjun_correct': 0,
             'backjun_failed': 0,
+            'today_goal' : 0,
             'created_at': datetime.now()
         }
 
@@ -205,7 +206,6 @@ def weekly_stats(user_id):
         start_of_week_kst = (now_kst - timedelta(days=days_since_sunday)).replace(hour=0, minute=0, second=0, microsecond=0)
         end_of_week_kst = start_of_week_kst + timedelta(days=7)  # 다음 주 일요일 00:00 (exclusive)
 
-        # 2) 문자열 날짜 범위 (YYYY-MM-DD). solved_log.date는 KST 문자열로 저장됨
         def fmt(d):
             return d.strftime('%Y-%m-%d')
         start_date_str = fmt(start_of_week_kst)
@@ -354,7 +354,7 @@ def upsert_today_submissions(user_id, items):
             upsert=True
         )
         updated += 1
-        time.sleep(0.1)  # solved.ac API 과도한 요청 방지
+        time.sleep(0.1)  
     return updated
 
 @app.route('/api/backjun/update_status/<user_id>', methods=['POST'])
