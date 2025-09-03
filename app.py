@@ -3,18 +3,16 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required, get_jwt_identity
 )
+from pymongo import MongoClient, DESCENDING
+from pymongo.errors import CollectionInvalid
 from urllib.parse import _ResultMixinBytes
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 import requests
 import json
 import re
 import time
-from bs4 import BeautifulSoup
-from datetime import datetime, timedelta
 import pytz
-from flask import Flask, render_template, jsonify, request
-from pymongo import MongoClient
-from pymongo import DESCENDING
-from pymongo.errors import CollectionInvalid
 import threading
 import os
 
@@ -75,7 +73,7 @@ def login():
         return jsonify({"result": "success", "access_token": access_token})
     return jsonify({"result": "fail", "msg": "아이디 또는 비밀번호 오류"})
 
-# 회원가입 ============= ================
+# 회원가입 =============================
 
 @app.route('/signuppage')
 def signuppage():
@@ -108,7 +106,7 @@ def signup():
 
     return jsonify({'result': 'success'})
 
-# 마이페이지 ============= ================
+# 마이페이지 =============================
 @app.route('/mypage')
 @jwt_required()
 def mypage():
@@ -210,7 +208,11 @@ def parse_status_rows_today(user_id):
 
 @app.route('/rank')
 def rank():
-    return render_template("rank.html", activate_tab="rank")
+    top3 = list(db.users.find({}, {'_id': 0, 'backjun_id': 1, 'backjun_correct': 1})
+            .sort('backjun_correct', DESCENDING).limit(3))
+    for idx, user in enumerate(top3, start=1):
+        user['rank'] = idx
+    return render_template("rank.html", top3=top3)
 
 ##============================
     
