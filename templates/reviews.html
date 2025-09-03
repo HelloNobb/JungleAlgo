@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
+	<link rel="stylesheet" href="../static/css/reviews.css">
+	<title>Review</title>
+</head>
+<body class="container is-max-desktop">
+		<section class="page section is-large">
+			<!--reviewed boxes section-->
+			<div class="reviews-scroll box" id="reviews-list">
+				<!--my review box-->
+				<article class="media my-review">
+					<figure class="media-left">
+						<p class="image is-64x64">
+						<img src="../static/img_icon.png" />
+						</p>
+					</figure>
+					<div class="media-content">
+						<div class="content">
+							<p class="is-flex is-justify-content-space-between is-align-items-center">
+								<strong>
+									@dodsanf(nickname)&nbsp&nbsp/&nbsp&nbspcode no.<a href="https://www.acmicpc.net/problem/1000">1000</a>
+								</strong>
+								
+								<span class="stars_">
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-regular fa-star"></i>
+								</span>
+							</p>
+								이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다. adfsfhasjkfhakjsdfhjkasdfhjaks
+								fdjakfhjkdfhdkjfhadsjkfhadjskfjksdhfkjsdahfjkadhfjkadhfkjadshfjkdahfkdsajkf
+								dksajfhjkdsahfkdadkjfkdalfjldkafjkladjfkldajfkldasjflkajfldaks
+							<br/>
+							<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
+						</div>
+					</div>
+				</article>
+				<!--other's review box-->
+				<article class="media other-review">
+					<figure class="media-left">
+						<p class="image is-64x64">
+						<img src="../static/img_icon.png" />
+						</p>
+					</figure>
+					<div class="media-content">
+						<div class="content">
+							<p class="is-flex is-justify-content-space-between is-align-items-center">
+								<strong>
+									@dodsanf(nickname)&nbsp&nbsp/&nbsp&nbspcode no. <a href="https://www.acmicpc.net/problem/1000">620</a>
+								</strong>
+								
+								<span class="stars_">
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-solid fa-star"></i>
+									<i class="fa-regular fa-star"></i>
+								</span>
+							</p>
+								마감할 수 있겠지. 열심히 해보자.
+							<br/>
+							<small>3 hrs</small>
+						</div>
+					</div>
+				</article>
+				
+			</div>
+			<!--reviewing section-->
+			<div class="media">
+				<figure class="media-left">
+					<p class="image is-64x64">
+					<img src="../static/img_icon.png" />
+					</p>
+				</figure>
+				<div class="media-content">
+					
+					<div class="field">
+						<p class="control">
+							<textarea class="textarea" placeholder="Post your own review.."></textarea>
+						</p>
+					</div>
+					<div class="field is-grouped is-justify-content-space-between">
+						<!--question no.-->
+						<div class="control">
+							<div class="select is-normal">
+								<select>
+									<option>1111번</option>
+									<option>672번</option>
+								</select>
+							</div>
+						</div>
+						<!--post bttn-->
+						<div class="field">
+							<p class="control">
+								<button class="button">Post comment</button>
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+	<!--Chart.js-->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+	<!--fontawsome : icon용-->
+	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
+	<script>
+		function SetReviewVisibleCount(n=3){
+			const list= document.getElementById('reviews-list');
+			if (!list) return;
+			const items = list.querySelectAll('article.media');
+			if (!items.length) return;
+			
+			const gap = parseFloat(getComputedStyle)
+		}
+	</script>
+
+
+</body>
+
+</html>
