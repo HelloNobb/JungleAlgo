@@ -155,9 +155,9 @@ def readProfile(bj):
         {'$group': {'_id': None, 'review_point': {'$sum': '$review_point'}}}
     ]))
     review_point = agg[0]['review_point'] if agg else 0
-    tier_counts = list(solved_log.aggregate([
+    difficulty_counts = list(solved_log.aggregate([
         {'$match': {'baekjoon_id': bj}},
-        {'$group': {'_id': '$tier', 'count': {'$sum': 1}}},
+        {'$group': {'_id': '$difficulty', 'count': {'$sum': 1}}},
         {'$sort': {'_id': 1}}
     ]))
 
@@ -175,7 +175,7 @@ def readProfile(bj):
                 'today': today,
                 'review_point': review_point,
                 'rank': rank,
-                'tier_counts': tier_counts
+                'difficulty_counts': difficulty_counts
             }
         }
     })
@@ -184,6 +184,8 @@ def readProfile(bj):
 # 사용자 데이터 업데이트 구현
 HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; JungleAlgoBot/1.0)'}
 
+    # 오늘 시간에 대한 기준을 생성함.
+
 def kst_today_range():
     kst = pytz.timezone('Asia/Seoul')
     now_kst = datetime.now(kst)
@@ -191,6 +193,7 @@ def kst_today_range():
     end_kst = start_kst + timedelta(days=1)
     return start_kst, end_kst
 
+# 오늘 푼 문제에 대한 데이터를 가져올 수 있는 url 
 def fetch_status_html(user_id):
     url = f'https://www.acmicpc.net/status?problem_id=&user_id={user_id}&language_id=-1&result_id=-1'
     resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -198,6 +201,7 @@ def fetch_status_html(user_id):
         return None
     return resp.text
 
+# 해당 유저의 오늘 푼 문제에 대한 ID, 시간, 날짜 데이터 파싱
 def parse_status_rows_today(user_id):
     html = fetch_status_html(user_id)
     if not html:
@@ -254,24 +258,57 @@ def parse_status_rows_today(user_id):
         })
     return items
 
+def get_problem_difficulty(problem_id):
+    try:
+        url = f'https://solved.ac/api/v3/problem/show?problemId={problem_id}'
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; JungleAlgoBot/1.0)'}
+        response = requests.get(url, headers=headers, timeout=5)
+        
+        if response.status_code != 200:
+            return None
+            
+        data = response.json()
+        level = data.get('level', 0)
+        
+        # solved.ac 레벨을 단순화된 난이도로 매핑
+        if level <= 5:
+            return 'Bronze'
+        elif level <= 10:
+            return 'Silver'
+        elif level <= 15:
+            return 'Gold'
+        elif level <= 20:
+            return 'Platinum'
+        elif level <= 25:
+            return 'Diamond'
+        else:
+            return 'Ruby'
+    except Exception:
+        return None
+
 def upsert_today_submissions(user_id, items):
     updated = 0
     for it in items:
+        # 문제 난이도 정보 가져오기
+        difficulty = get_problem_difficulty(it['problem_id'])
+        
         # 날짜별 기록을 원하면 unique를 (baekjoon_id, problem_id, date)로 운영하세요.
         # 현재 인덱스가 (baekjoon_id, problem_id)인 경우에는 같은 문제는 하루 1회만 유지됨.
         solved_log.update_one(
             {'baekjoon_id': user_id, 'problem_id': it['problem_id']},
-            {'$setOnInsert': {'title': None, 'difficulty': None},
+            {'$setOnInsert': {'title': None},
              '$set': {
                  'date': it['date_kst'],
                  'solved_at': it['solved_at_utc'],
                  'result': 'correct',
-                 'review': False
+                 'review': False,
+                 'difficulty': difficulty
              },
              '$inc': {'submission_count': 1}},
             upsert=True
         )
         updated += 1
+        time.sleep(0.1)  # solved.ac API 과도한 요청 방지
     return updated
 
 @app.route('/api/backjun/update_status/<user_id>', methods=['POST'])
@@ -290,10 +327,6 @@ def update_status_all():
         return jsonify({'success': True, 'updated_total': total})
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
-
-
-
 
 def update_all_users_once():
     users = users_collection.find({}, {'_id': 0, 'backjun_id': 1})
