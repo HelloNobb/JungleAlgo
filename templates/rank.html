@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
+	<title>Rank</title>
+	<style>
+		.stickyContainer{
+			max-height:320px;
+			overflow-y:auto;
+		}
+	</style>
+</head>
+<body>
+	<div class="container is-max-desktop">
+		<section class="section">
+			<div class="box graphs">
+				<div class="columns is-vcentered">
+					<!--graph1 : 리뷰포인트순위-->
+					<div class="column">
+						<div style="height:260px">
+							<canvas id="chart1"></canvas>
+						</div>
+					</div>
+					<!--graph2 : 문제풀이포인트순위-->
+					<div class="column">
+						<div style="height:260px">
+							<canvas id="chart2"></canvas>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="box rankings">
+				<div class="columns">
+					<!--포인트 순위표-->
+					<div class="column">
+						<div class="title">
+							<table>
+								<tr>
+									<th>rank /</th>
+									<th>nickname /</th>
+									<th>point</th>
+								</tr>
+								<tr>
+									<td>1</td>
+									<td>hyunji</td>
+									<td>200</td>
+								</tr>
+								<tr>
+									<td>2</td>
+									<td>hyunji</td>
+									<td>200</td>
+								</tr>
+								<tr>
+									<td>3</td>
+									<td>hyunji</td>
+									<td>200</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+					<!--문풀점수 순위표-->
+					<div class="column">
+						<div class="title">
+							<table>
+								<tr>
+									<th>rank /</th>
+									<th>nickname /</th>
+									<th>point</th>
+								</tr>
+								<tr>
+									<td>1</td>
+									<td>hyunji</td>
+									<td>200</td>
+								</tr>
+								<tr>
+									<td>2</td>
+									<td>hyunji</td>
+									<td>200</td>
+								</tr>
+								<tr>
+									<td>3</td>
+									<td>hyunji</td>
+									<td>200</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+				</div>
+				
+			</div>
+		</section>
+	</div>
+		
+		
+	<!--Chart.js-->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+	<!--fontawsome : icon용-->
+	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
+	<script>
+		//Chart.js 이용한 차트 출력
+		const cht1 = document.getElementById('chart1').getContext('2d');
+		new Chart(cht1,{
+			type:'bar',
+			data:{
+				labels:['3rd','1st','2nd'],
+				datasets:[{
+					label:"포인트 순위",
+					borderWidth:2,
+					data:[
+						10,30,20
+					]
+				}]
+			}
+		});
+		const cht2 = document.getElementById('chart2').getContext('2d');
+		new Chart(cht2,{
+			type:'bar',
+			data:{
+				labels:['3rd','1st','2nd'],
+				datasets:[{
+					label:"포인트 순위",
+					borderWidth:2,
+					data:[
+						10,30,20
+					]
+				}]
+			}
+		});
+	</script>
+
+
+<!-- Code injected by live-server -->
+<script>
+	// <![CDATA[  <-- For SVG support
+	if ('WebSocket' in window) {
+		(function () {
+			function refreshCSS() {
+				var sheets = [].slice.call(document.getElementsByTagName("link"));
+				var head = document.getElementsByTagName("head")[0];
+				for (var i = 0; i < sheets.length; ++i) {
+					var elem = sheets[i];
+					var parent = elem.parentElement || head;
+					parent.removeChild(elem);
+					var rel = elem.rel;
+					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
+						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
+						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
+					}
+					parent.appendChild(elem);
+				}
+			}
+			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
+			var address = protocol + window.location.host + window.location.pathname + '/ws';
+			var socket = new WebSocket(address);
+			socket.onmessage = function (msg) {
+				if (msg.data == 'reload') window.location.reload();
+				else if (msg.data == 'refreshcss') refreshCSS();
+			};
+			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
+				console.log('Live reload enabled.');
+				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
+			}
+		})();
+	}
+	else {
+		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
+	}
+	// ]]>
+</script>
+</body>
+
+</html>
