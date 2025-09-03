@@ -8,13 +8,40 @@ from datetime import datetime, timedelta
 import pytz
 from flask import Flask, render_template, jsonify, request
 from pymongo import MongoClient
+from pymongo.errors import CollectionInvalid
 app = Flask(__name__)
 
 client = MongoClient('localhost', 27017)
 db = client.jungle_algo
 
 users_collection = db.users
-solvedLog_collevtion = db.sovled_LOG
+
+# 컬렉션 정의 및 생성/인덱스
+solved_log = db['solved_log']
+try:
+    db.create_collection('solved_log')
+except CollectionInvalid:
+    pass
+
+# 인덱스(생성만 해도 컬렉션이 만들어짐)
+solved_log.create_index([('baekjoon_id', 1), ('problem_id', 1)], unique=True)
+solved_log.create_index([('baekjoon_id', 1), ('solved_at', -1)])
+solved_log.create_index([('baekjoon_id', 1), ('tier', 1)])
+
+# solved.ac 이력 넣을 경우 중복 제거 가능 
+# def upsert_solved_log(baekjoon_id, problem_id, title, tier, solved_at, is_reviewed=False, review_point=0, tags=None):
+#     solved_log.update_one(
+#         {'baekjoon_id': baekjoon_id, 'problem_id': problem_id},
+#         {'$setOnInsert': {'title': title},
+#          '$set': {
+#             'tier': tier,
+#             'solved_at': solved_at,        # UTC datetime
+#             'is_reviewed': is_reviewed,
+#             'review_point': review_point,
+#             'tags': tags or []
+#          }},
+#         upsert=True
+#     )
 
 @app.route('/')
 def home():
@@ -115,41 +142,44 @@ def register():
 
 @app.route('/api/profile/<bj>', methods=['GET'])
 def readProfile(bj):
-    user = users_collection.find_one({'backjun_id': bj}, {'_id':0})
-    if not user:
-        return jsonify({'success': False, 'error': {'code':'NOT_FOUND','message':'사용자 없음'}}), 404
+    # 사용자 프로필 조회
+    profile = users_collection.find_one({'backjun_id': bj}, {'_id': 0})
+    if not profile:
+        return jsonify({'success': False, 'error': {'code': 'NOT_FOUND', 'message': '사용자 없음'}}), 404
 
+    # 오늘의 범위(KST)
     def today_range_kst():
         kst = pytz.timezone('Asia/Seoul')
         now_kst = datetime.now(kst)
         start_kst = now_kst.replace(hour=0, minute=0, second=0, microsecond=0)
         end_kst = start_kst + timedelta(days=1)
-        # UTC로 변환
         return start_kst.astimezone(pytz.UTC), end_kst.astimezone(pytz.UTC)
 
     start_utc, end_utc = today_range_kst()
-    total = solvedLog_collevtion.count_documents({'baekjoon_id': bj})
-    today = solvedLog_collevtion.count_documents({'baekjoon_id': bj, 'solved_at': {'$gte': start_utc, '$lt': end_utc}})
-    agg = list(solvedLog_collevtion.aggregate([
+
+    # solved_log 집계 (주의: solved_log는 baekjoon_id 필드 사용 가정)
+    total = solved_log.count_documents({'baekjoon_id': bj})
+    today = solved_log.count_documents({'baekjoon_id': bj, 'solved_at': {'$gte': start_utc, '$lt': end_utc}})
+    agg = list(solved_log.aggregate([
         {'$match': {'baekjoon_id': bj}},
         {'$group': {'_id': None, 'review_point': {'$sum': '$review_point'}}}
     ]))
     review_point = agg[0]['review_point'] if agg else 0
-    tier_counts = list(solvedLog_collevtion.aggregate([
+    tier_counts = list(solved_log.aggregate([
         {'$match': {'baekjoon_id': bj}},
         {'$group': {'_id': '$tier', 'count': {'$sum': 1}}},
         {'$sort': {'_id': 1}}
     ]))
 
-    # 간단 랭킹(필요 시 캐시/사전 계산 권장)
-    rank_cursor = users_collection.find({}, {'_id':0,'backjun_id':1,'problem_point':1,'review_point':1})
-    sorted_users = sorted(rank_cursor, key=lambda u: (u.get('problem_point',0), u.get('review_point',0)), reverse=True)
-    rank = next((i+1 for i,u in enumerate(sorted_users) if u.get('backjun_id') == bj), None)
+    # 간단 랭킹
+    rank_cursor = users_collection.find({}, {'_id': 0, 'backjun_id': 1, 'problem_point': 1, 'review_point': 1})
+    sorted_users = sorted(rank_cursor, key=lambda u: (u.get('problem_point', 0), u.get('review_point', 0)), reverse=True)
+    rank = next((i + 1 for i, u in enumerate(sorted_users) if u.get('backjun_id') == bj), None)
 
     return jsonify({
         'success': True,
         'data': {
-            'profile': user,
+            'profile': profile,
             'stats': {
                 'total': total,
                 'today': today,
@@ -160,10 +190,12 @@ def readProfile(bj):
         }
     })
 
+# TODO : 전체 유저 1시간 주기 업데이트 기능 추가 예정
 @app.route('/api/backjun/update_usersProfile', methods=["POST"])
 def update_usersProfile():
 
     return
+
 
 
 if __name__ == '__main__':  
