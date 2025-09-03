@@ -193,6 +193,52 @@ def kst_today_range():
     end_kst = start_kst + timedelta(days=1)
     return start_kst, end_kst
 
+
+# 이번 주(일요일~토요일) 일별 풀이 수 집계 API
+@app.route('/api/stats/weekly/<user_id>', methods=['GET'])
+def weekly_stats(user_id):
+    try:
+        # 1) KST 기준 오늘, 이번 주 일요일~토요일 계산
+        kst = pytz.timezone('Asia/Seoul')
+        now_kst = datetime.now(kst)
+        days_since_sunday = (now_kst.weekday() + 1) % 7  # Mon=0..Sun=6 → Sun=0
+        start_of_week_kst = (now_kst - timedelta(days=days_since_sunday)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_week_kst = start_of_week_kst + timedelta(days=7)  # 다음 주 일요일 00:00 (exclusive)
+
+        # 2) 문자열 날짜 범위 (YYYY-MM-DD). solved_log.date는 KST 문자열로 저장됨
+        def fmt(d):
+            return d.strftime('%Y-%m-%d')
+        start_date_str = fmt(start_of_week_kst)
+        last_inclusive_date_str = fmt(start_of_week_kst + timedelta(days=6))
+
+        # 3) MongoDB 집계: 해당 주간 범위 매칭 후 날짜별 그룹
+        pipeline = [
+            {'$match': {
+                'baekjoon_id': user_id,
+                'date': {'$gte': start_date_str, '$lte': last_inclusive_date_str}
+            }},
+            {'$group': {'_id': '$date', 'count': {'$sum': 1}}},
+            {'$sort': {'_id': 1}}
+        ]
+        rows = list(solved_log.aggregate(pipeline))
+        date_to_count = {r['_id']: r['count'] for r in rows}
+
+        # 4) 누락된 날짜는 0으로 채움 (일요일~토요일 7일)
+        daily = []
+        for i in range(7):
+            d = start_of_week_kst + timedelta(days=i)
+            ds = fmt(d)
+            daily.append({'date': ds, 'count': int(date_to_count.get(ds, 0))})
+
+        return jsonify({
+            'success': True,
+            'user_id': user_id,
+            'range': {'start': start_date_str, 'end': last_inclusive_date_str},
+            'daily': daily
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 # 오늘 푼 문제에 대한 데이터를 가져올 수 있는 url 
 def fetch_status_html(user_id):
     url = f'https://www.acmicpc.net/status?problem_id=&user_id={user_id}&language_id=-1&result_id=-1'
@@ -378,7 +424,6 @@ def fetch_user_profile(user_id):
         'backjun_correct': backjun_correct,
         'backjun_failed': backjun_failed
     }
-
 
 def update_user_profile(user_id):
     data = fetch_user_profile(user_id)
