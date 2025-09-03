@@ -42,13 +42,19 @@
                 data: {userid_give: userid, password_give: password}, // data라는 이름으로 userid와 password를 줄게
                 success: function (response) { // 성공하면
                     if (response["result"] == "success") {
-                        
+                        // 서버에서 받은 JWT 토큰을 로컬 스토리지에 저장
+                        localStorage.setItem("access_token", response["access_token"]); 
                         // 성공 시 메인 화면으로 이동
-                        window.location.href = "/"; 
+                        window.location.href = "/main"; 
                         alert("로그인 성공!")
+
                     } else {
                         alert(response["msg"]); // 실패 시 에러 메시지 출력
                     }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    // 서버 통신 실패 시
+                    alert("서버와 통신하는 중 오류가 발생했습니다.");
                 }
             })
         }
@@ -70,7 +76,7 @@
     <body>
         <div class="wrap">
             <h1 class="display-4">나의 알고리즘 로그인 화면</h1>
-            <input id="userid" style="margin: 10px 0; width: 100%; height:40px" placeholder="이메일 주소">
+            <input id="userid" style="margin: 10px 0; width: 100%; height:40px" placeholder="아이디">
             <input id="password" style="margin: 10px 0; width: 100%; height:40px" placeholder="비밀번호">
             <br>
             <br>
