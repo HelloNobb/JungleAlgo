@@ -86,7 +86,7 @@ function editReview(button) {
 				</div>
 				<div class="control">
 					<div class="select is-normal">
-						<select id="star_rating_select">
+						<select class="edit_rating_select">
 							<option value="5">★★★★★</option>
 							<option value="4">★★★★☆</option>
 							<option value="3">★★★☆☆</option>
@@ -110,8 +110,8 @@ function cancelEdit(button) {
 function updateReview(button) {
     const mediaContent = $(button).closest('.media-content');
 	const problem_id = mediaContent.find('.problem-id').text();
-    const newStar = mediaContent.find('.review-star').val();
-    const newText = mediaContent.find('.review-textarea').val();
+    const edited_star = $('.edit_rating_select').val();
+    const edited_text = mediaContent.find('.review-textarea').val();
 
     // 서버에 수정된 내용을 POST 또는 PUT 방식으로 전송
     $.ajax({
@@ -119,8 +119,8 @@ function updateReview(button) {
         url: "/api/reviews/update", // 리뷰 업데이트 API 주소
         data: {
             problem_id: problem_id,
-            edited_text: newText,
-            edited_star: newStar
+            edited_text: edited_text,
+            edited_star: edited_star
         },
 		beforeSend: function(xhr) {
 			const token = localStorage.getItem("access_token");
@@ -186,16 +186,17 @@ function showReviews() {
 		success: function (response) {
 			let reviews = response["reviews"];
 			let current_user_id = response["current_user_id"];
+			let review_date = response["review_date"];
 			console.log(reviews);
 			$('#reviews-list').empty();
 			for (let i = 0; i < reviews.length; i++) {
-				makeReview(reviews[i]["problem_id"], reviews[i]["backjun_id"], reviews[i]["review_text"], reviews[i]["difficulty"], reviews[i]["star"], current_user_id);
+				makeReview(reviews[i]["problem_id"], reviews[i]["backjun_id"], reviews[i]["review_text"], reviews[i]["difficulty"], reviews[i]["star"], current_user_id, reviews[i]["review_date"]);
 			}
 		}
 	})
 }
 // 리뷰 하나를 HTML로 만들어서 reviews-list에 추가하는 함수
-function makeReview(problem_id, backjun_id, review_text, difficulty, star, current_user_id) {
+function makeReview(problem_id, backjun_id, review_text, difficulty, star, current_user_id, review_date) {
 	let star_html = '';
 	for(let i=0; i<star; i++){
 		star_html += '★';
@@ -225,7 +226,7 @@ function makeReview(problem_id, backjun_id, review_text, difficulty, star, curre
 					${review_text}
 				<br/>
 			</div>
-			${backjun_id === current_user_id ? '<small id="editbutton"><a onclick="editReview(this)">Edit</a> · <a onclick="deleteReview(this)">Delete</a> · 3 hrs</small>' : ''}
+			${backjun_id === current_user_id ? '<small id="editbutton"><a onclick="editReview(this)">Edit</a> · <a onclick="deleteReview(this)">Delete</a> · ' + review_date + '</small>' : '<small class="review-date-text">' + review_date + '</small>'}
 		</div>
 	</article>`;
 	$('#reviews-list').append(tempHtml);

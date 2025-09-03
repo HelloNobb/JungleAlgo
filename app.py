@@ -90,7 +90,7 @@ def create_review():
         review_text=request.form['review_text']
         problem_id=request.form['problem_id']
         backjun_id = get_jwt_identity()
-        date=now.strftime('%Y-%m-%d-%H:%M:%S')
+        review_date=now.strftime('%Y-%m-%d-%H:%M:%S')
         star = request.form['star']
         difficulty = 'string' 
         
@@ -101,7 +101,7 @@ def create_review():
             'review_text': review_text,
             'problem_id': problem_id,
             'backjun_id': backjun_id,
-            'date': date,
+            'review_date': review_date,
             'star': star,
             'difficulty': difficulty
         })
@@ -131,19 +131,20 @@ def delete_review():
         return jsonify({'result': 'fail', 'message': '해당 리뷰를 찾을 수 없거나 삭제 권한이 없습니다.'}), 403
 
 @app.route('/api/reviews/update', methods=['POST'])
+@jwt_required()
 def update_review():
     now = datetime.now()
     problem_id = request.form['problem_id']
     edited_text = request.form['edited_text']
     edited_star = request.form['edited_star']
     backjun_id = get_jwt_identity()
-    date=now.strftime('%Y-%m-%d-%H:%M:%S')
+    review_date=now.strftime('%Y-%m-%d-%H:%M:%S')
 
     db.solved_logs.update_one({'problem_id': problem_id, 'backjun_id': backjun_id}, {
         '$set': {
             'review_text': edited_text,
             'star': edited_star,
-            'date': date
+            'review_date': review_date
         }
     })
 
@@ -152,7 +153,7 @@ def update_review():
 @app.route('/api/reviews/show', methods=['GET'])
 @jwt_required()
 def show_reviews():
-    result = list(db.solved_logs.find({}, {'_id': False}).sort([("date", -1)]))
+    result = list(db.solved_logs.find({}, {'_id': False}).sort([("review_date", -1)]))
     return jsonify({'result': 'success', 'reviews': result, 'current_user_id': get_jwt_identity()})
 
 
