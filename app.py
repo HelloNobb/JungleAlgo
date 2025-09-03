@@ -17,8 +17,11 @@ from pymongo import DESCENDING
 from pymongo.errors import CollectionInvalid
 import threading
 import os
+## views.py (목표설정박스 동적변경용)
+from views import views_bp
 
 app = Flask(__name__)
+app.register_blueprint(views_bp) # 블루프린트를 flask앱에 등록
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 #db 연결
@@ -29,15 +32,11 @@ users_collection = db.users
 
 # 컬렉션 정의 및 생성/인덱스
 solved_log = db['solved_log']
-# try:
-#     db.create_collection('solved_log')
-# except CollectionInvalid:
-#     pass
 
 # 인덱스(생성만 해도 컬렉션이 만들어짐)
-#solved_log.create_index([('baekjoon_id', 1), ('problem_id', 1)], unique=True)
-# solved_log.create_index([('baekjoon_id', 1), ('solved_at', -1)])
-# solved_log.create_index([('baekjoon_id', 1), ('tier', 1)])
+solved_log.create_index([('baekjoon_id', 1), ('problem_id', 1)], unique=True)
+solved_log.create_index([('baekjoon_id', 1), ('solved_at', -1)])
+solved_log.create_index([('baekjoon_id', 1), ('tier', 1)])
 
 #app.config['JWT_SECRET_KEY'] = "myAlgorithmJWT"
 app.config.update(

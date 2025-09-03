@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 
 \{% block title %}My Page{% endblock %}
-
+<style>
+	.chartContainer_{
+		position: relative;
+		width:100%;
+		height:300px;
+	}
+</style>
 	{% block content %}
 	<!--프로필 & 목표설정-->
 	<div class="columns">
@@ -17,25 +23,21 @@
 						</div>
 						<div class="media-content">
 						<div class="content">
-							<strong>@{{baekjoon_id}}</strong>
+							<strong>@{{ baekjun_id }}</strong>
 							&nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded">300pt</strong>
 							<br>
-							Today    {{today_amount}}<br>
-							Total    {{total_amount}}<br>
-							Rank    {{tier}}<br>
-							<span class="tag is-danger">{{Ruby}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-white">{{Diamond}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-success">{{Platinum}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-info">{{Gold}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-link">{{Silver}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-warning is-dark">{{Bronze}}</span>&nbsp&nbsp&nbsp
+							Today    {{ today_amount }}<br>
+							Total    {{ total_amount }}<br>
+							Rank    {{ tier }}<br>
+							<span class="tag is-danger">{{ Ruby }}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-white">{{ Diamond }}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-success">{{ Platinum }}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-info">{{ Gold }}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-link">{{ Silver }}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-warning is-dark">{{ Bronze }}</span>&nbsp&nbsp&nbsp
 							<!--chart-->
 							<div class="chartContainer_ container">
-								<div>
-									<div>
-										<canvas id="chart-container"></canvas>
-									</div>
-								</div>
+								<canvas id="chart-container"></canvas>
 							</div>
 						</div>
 					</div>
@@ -72,8 +74,8 @@
 								<th>Goal</th>
 								<th>Achieved</th>
 							</tr>
-								<td>{{goal_amount}}</td>
-								<td>{{today_amount}}</td>
+								<td>{{ goal_amount }}</td>
+								<td>{{ today_amount }}</td>
 						</table>
 					</div>
 				</article>
@@ -173,22 +175,40 @@
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 	<!--fontawsome : icon용-->
 	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
-	<script>
-		//Chart.js 이용한 차트 출력
-		const chartEI = document.getElementById('chart-container').getContext('2d');
-		const barChart = new Chart(chartEI,{
-			type:'line',
-			data:{
-				labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-				datasets:[{
-					label:'Weekly',
-					borderWidth:3,
-					data:[
-						3, 2, 5, 0,2
-					]
-				}]
+	<script type="module">
+		const userId = "{{ baekjun_id }}";
+		//API 호출 (user_id는 로그인한 아이디로 교체)
+		async function drawChart(){
+			try{
+				const res = await fetch(`/api/stats/weekly/${userId}`);
+				const data = await res.json();
+
+				if (!data.success){
+					console.error("api 오류", data.message);
+					return;
+				}
+				const counts = data.daily.map(d => d.count);
+				//Chart.js
+				const ctx = document.getElementById('chart-container').getContext('2d');
+				new Chart(ctx,{
+					type: 'line',
+					data: {
+					labels: ['월', '화', '수', '목', '금', '토', '일'], // 요일 고정
+					datasets: [{
+						label: 'Weekly',
+						borderWidth: 3,
+						data: counts // API에서 온 7개 count 값
+					}]
+				}});
+			} catch(err){
+				console.error("차트로드실패",err);
 			}
-		});
+			
+		}
+		window.onload = () =>{
+			drawChart();
+		}
+		
 	</script>
 </body>
 </html>
