@@ -309,6 +309,15 @@ def update_all_users_once():
 
 
 # --- 프로필(사용자 정보) 업데이트 ---
+def _parse_int_safe(text):
+    if text is None:
+        return None
+    try:
+        # 쉼표, 공백 제거 후 정수 변환
+        return int(str(text).replace(',', '').strip())
+    except Exception:
+        return None
+
 def fetch_user_profile(user_id):
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
     resp = requests.get(f'https://www.acmicpc.net/user/{user_id}', headers=headers, timeout=10)
@@ -327,15 +336,14 @@ def fetch_user_profile(user_id):
             key = th.get_text(strip=True)
             value = td.get_text(strip=True)
             result[key] = value
-    rank_text = result.get('등수')
-    try:
-        rank = int(rank_text) if rank_text is not None else None
-    except ValueError:
-        rank = None
+    # register에서 저장했던 필드들 동일 처리
+    rank = _parse_int_safe(result.get('등수'))
+    backjun_correct = _parse_int_safe(result.get('맞은 문제'))
+    backjun_failed = _parse_int_safe(result.get('시도했지만 맞지 못한 문제'))
     return {
         'rank': rank,
-        'backjun_correct': result.get('맞은 문제'),
-        'backjun_failed': result.get('시도했지만 맞지 못한 문제')
+        'backjun_correct': backjun_correct,
+        'backjun_failed': backjun_failed
     }
 
 
