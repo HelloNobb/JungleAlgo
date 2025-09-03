@@ -5,41 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-    <script>
-      function updateTodaySolved() {
-        $("#result").text("요청 중...");
-        $.ajax({
-          url: "/api/backjun/update_status/jun200109",
-          type: "POST",
-          success: function (data) {
-            if (data && data.success) {
-              $("#result").text(
-                `성공: ${data.user_id} 업데이트 ${data.updated}건`
-              );
-            } else {
-              $("#result").text("실패: 서버 응답 오류");
-            }
-          },
-          error: function (xhr) {
-            $("#result").text(`실패: ${xhr.status} ${xhr.statusText}`);
-          },
-        });
-      }
-    </script>
   </head>
-  <body>
-    <div
-      style="
-        padding: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-          'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji',
-          'Segoe UI Emoji';
-      "
-    >
-      <h2>오늘 푼 문제 저장 테스트</h2>
-      <p>대상 백준 아이디: <b>jun200109</b></p>
-      <button onclick="updateTodaySolved()">오늘 푼 문제 저장</button>
-      <div id="result" style="margin-top: 12px; color: #333"></div>
-    </div>
-  </body>
+  <body></body>
 </html>
