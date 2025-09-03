@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <meta charset="utf-8">
+    <title>Login|Algorithm</title>
+    <style type="text/css">
+        *{
+            padding: 0;
+            margin: 0;
+/*            border: none;*/
+        }
+        body{
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .wrap {
+                width: 450px;
+                margin: 100px auto;
+                box-sizing: border-box;
+                text-align: center;
+            }
+
+        input {
+            box-sizing: border-box;
+        }
+        button {
+            border: none;
+        }
+    </style>
+    <script type="text/javascript">
+        function login() {
+            let userid = document.getElementById("userid").value;
+            let password = document.getElementById("password").value;
+            alert("로그인하기");
+
+            // 서버에 POST 방식으로
+            $.ajax({
+                type: "POST", // POST 방식으로 요청하겠다.
+                url: "/loginpage/login", // /login이라는 url에 요청하겠다.
+                data: {userid_give: userid, password_give: password}, // data라는 이름으로 userid와 password를 줄게
+                success: function (response) { // 성공하면
+                    if (response["result"] == "success") {
+                        // 서버에서 받은 JWT 토큰을 로컬 스토리지에 저장
+                        localStorage.setItem("access_token", response["access_token"]); 
+                        // 성공 시 메인 화면으로 이동
+                        window.location.href = "/reviewpage"; 
+                        alert("로그인 성공!")
+                    } else {
+                        alert(response["msg"]); // 실패 시 에러 메시지 출력
+                    }
+                }
+            })
+        }
+        function lostid() {
+            alert("아이디 찾기 페이지로 이동합니다.");
+            console.log("아이디 찾기 페이지로 이동합니다.");
+            window.location.href = "/lostidpage";
+        }
+        function lostpw() {
+            alert("비밀번호 찾기 페이지로 이동합니다.");
+            window.location.href = "/lostpwpage";
+        }
+        function signup() {
+            alert("회원가입 페이지로 이동합니다.");
+            window.location.href = "/signuppage";
+        }
+    </script>
+    </head>
+    <body>
+        <div class="wrap">
+            <h1 class="display-4">나의 알고리즘 로그인 화면</h1>
+            <input id="userid" style="margin: 10px 0; width: 100%; height:40px" placeholder="이메일 주소">
+            <input id="password" style="margin: 10px 0; width: 100%; height:40px" placeholder="비밀번호">
+            <br>
+            <br>
+            <button type="button" style="width: 100%; height:40px; background-color:green; color:white;" class="btn btn-primary" onclick="login()">로그인하기</button>
+            <br>
+            <br>
+            <div class="btn-group">
+                <button type="button" style="margin: 0 40px; height:25px" class="btn btn-secondary" onclick="lostid()">아이디 찾기</button>
+                <button type="button" style="margin: 0 40px; height:25px" class="btn btn-secondary" onclick="lostpw()">비밀번호 찾기</button>
+                <button type="button" style="margin: 0 40px; height:25px" class="btn btn-secondary" onclick="signup()">회원가입</button>
+            </div>
+        </div>
+        <div id="cards-box" class="row">
+        </div>
+    </body>
+</html>
