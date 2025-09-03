@@ -1,182 +1,173 @@
 {% extends "base.html" %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
-	<title>{% block title %}My Page{% endblock %}</title>
-</head>
-<body class="container is-max-desktop">
-		<section class="page section is-large">
-			{% block content %}
-			<!--프로필 & 목표설정-->
-			<div class="columns">
-				<!--프로필-->
-				<div class="column">
-					<div class="box">
-						<!--Profile-->
-						<article class="media">
-							<div class="media-left">
-								<figure class="image is-128x128">
-									<img src="https://bulma.io/assets/images/placeholders/128x128.png" />
-								</figure>
-								</div>
-								<div class="media-content">
-								<div class="content">
-									<strong>@{{baekjoon_id}}</strong>
-									&nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded">300pt</strong>
-									<br>
-									Today    {{today_amount}}<br>
-									Total    {{total_amount}}<br>
-									Rank    {{tier}}<br>
-									<span class="tag is-danger">{{Ruby}}</span>&nbsp&nbsp&nbsp
-									<span class="tag is-white">{{Diamond}}</span>&nbsp&nbsp&nbsp
-									<span class="tag is-success">{{Platinum}}</span>&nbsp&nbsp&nbsp
-									<span class="tag is-info">{{Gold}}</span>&nbsp&nbsp&nbsp
-									<span class="tag is-link">{{Silver}}</span>&nbsp&nbsp&nbsp
-									<span class="tag is-warning is-dark">{{Bronze}}</span>&nbsp&nbsp&nbsp
-									<!--chart-->
-									<div class="chartContainer_ container">
-										<div>
-											<div>
-												<canvas id="chart-container"></canvas>
-											</div>
-										</div>
+
+\{% block title %}My Page{% endblock %}
+
+	{% block content %}
+	<!--프로필 & 목표설정-->
+	<div class="columns">
+		<!--프로필-->
+		<div class="column">
+			<div class="box">
+				<!--Profile-->
+				<article class="media">
+					<div class="media-left">
+						<figure class="image is-128x128">
+							<img src="https://bulma.io/assets/images/placeholders/128x128.png" />
+						</figure>
+						</div>
+						<div class="media-content">
+						<div class="content">
+							<strong>@{{baekjoon_id}}</strong>
+							&nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded">300pt</strong>
+							<br>
+							Today    {{today_amount}}<br>
+							Total    {{total_amount}}<br>
+							Rank    {{tier}}<br>
+							<span class="tag is-danger">{{Ruby}}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-white">{{Diamond}}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-success">{{Platinum}}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-info">{{Gold}}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-link">{{Silver}}</span>&nbsp&nbsp&nbsp
+							<span class="tag is-warning is-dark">{{Bronze}}</span>&nbsp&nbsp&nbsp
+							<!--chart-->
+							<div class="chartContainer_ container">
+								<div>
+									<div>
+										<canvas id="chart-container"></canvas>
 									</div>
 								</div>
 							</div>
-						</article>
+						</div>
 					</div>
+				</article>
+			</div>
+		</div>
+		<!--목표설정-->
+		<div class="column">
+			{% if goal_amount is none %}
+			<div class="type_ box">
+				<!--목표 설정하기-->
+				<article class="message">
+					<div class="message-header">
+						<p>오늘의 목표 해결 문제 수</p>
+					</div>
+					<form action="{{ url_for('submit_goal') }}" method="post">
+					<div class="control">
+						<input name="goal_amount" class="input is-focused" type="text" placeholder="Focused input" />
+						<div class="has-text-right">
+							<button class="button" type="submit">확인</button>
+						</div>
+					</div>
+					</form>
+				</article>
+				{% else %}
+				<!--설정된 목표 조회-->
+				<article class="message">
+					<div class="message-header">
+						<h3>오늘의 현황</h3>
+					</div>
+					<div class="box">
+						<table class="table">
+							<tr>
+								<th>Goal</th>
+								<th>Achieved</th>
+							</tr>
+								<td>{{goal_amount}}</td>
+								<td>{{today_amount}}</td>
+						</table>
+					</div>
+				</article>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	<!--검색기능-->
+	<div>
+		<!-- Main container -->
+		<nav class="level">
+			<!-- Left side -->
+			<div class="level-left">
+				<div class="level-item">
+				<p class="subtitle is-5"><strong>123</strong> posts</p>
 				</div>
-				<!--목표설정-->
-				<div class="column">
-					{% if goal_amount is none %}
-					<div class="type_ box">
-						<!--목표 설정하기-->
-						<article class="message">
-							<div class="message-header">
-								<p>오늘의 목표 해결 문제 수</p>
-							</div>
-							<form action="{{ url_for('submit_goal') }}" method="post">
-							<div class="control">
-								<input name="goal_amount" class="input is-focused" type="text" placeholder="Focused input" />
-								<div class="has-text-right">
-									<button class="button" type="submit">확인</button>
-								</div>
-							</div>
-							</form>
-						</article>
-						{% else %}
-						<!--설정된 목표 조회-->
-						<article class="message">
-							<div class="message-header">
-								<h3>오늘의 현황</h3>
-							</div>
-							<div class="box">
-								<table class="table">
-									<tr>
-										<th>Goal</th>
-										<th>Achieved</th>
-									</tr>
-										<td>{{goal_amount}}</td>
-										<td>{{today_amount}}</td>
-								</table>
-							</div>
-						</article>
-						{% endif %}
-					</div>
+				<div class="level-item">
+				<div class="field has-addons">
+					<p class="control">
+					<input class="input" type="text" placeholder="문제번호로 검색" />
+					</p>
+					<p class="control">
+					<button class="button">Search</button>
+					</p>
+				</div>
 				</div>
 			</div>
 
-			<!--검색기능-->
-			<div>
-				<!-- Main container -->
-				<nav class="level">
-					<!-- Left side -->
-					<div class="level-left">
-						<div class="level-item">
-						<p class="subtitle is-5"><strong>123</strong> posts</p>
-						</div>
-						<div class="level-item">
-						<div class="field has-addons">
-							<p class="control">
-							<input class="input" type="text" placeholder="문제번호로 검색" />
-							</p>
-							<p class="control">
-							<button class="button">Search</button>
-							</p>
-						</div>
-						</div>
-					</div>
-
-					<!-- Right side -->
-					<div class="level-right">
-						<p class="level-item"><a class="button is-success">New</a></p>
-					</div>
-				</nav>
+			<!-- Right side -->
+			<div class="level-right">
+				<p class="level-item"><a class="button is-success">New</a></p>
 			</div>
-			<!--코드 리뷰-->
-			<div class="reviews_ box">	
-				<article class="media">
-					<figure class="media-left">
-						<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-						<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-						</p>
-					</figure>
-					<div class="media-content">
-						<div class="content">
-							<p>
-								<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-								<br />
-									이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-								<br />
-								<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-							</p>
-						</div>
-					</div>
-				</article>
-
-				<article class="media">
-					<figure class="media-left">
-						<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-						<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-						</p>
-					</figure>
-					<div class="media-content">
-						<div class="content">
-							<p>
-								<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-								<br />
-									이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-								<br />
-								<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-							</p>
-						</div>
-					</div>
-				</article>
-
-				<article class="media">
-					<figure class="media-left">
-						<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-						<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-						</p>
-					</figure>
-					<div class="media-content">
-						<div class="content">
-							<p>
-								<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-								<br />
-									이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-								<br />
-								<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-							</p>
-						</div>
-					</div>
-				</article>
+		</nav>
+	</div>
+	<!--코드 리뷰-->
+	<div class="reviews_ box">	
+		<article class="media">
+			<figure class="media-left">
+				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+				<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
+				</p>
+			</figure>
+			<div class="media-content">
+				<div class="content">
+					<p>
+						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
+						<br />
+							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
+						<br />
+						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
+					</p>
+				</div>
 			</div>
-			{% endblock %}
-		</section>
+		</article>
+
+		<article class="media">
+			<figure class="media-left">
+				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+				<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
+				</p>
+			</figure>
+			<div class="media-content">
+				<div class="content">
+					<p>
+						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
+						<br />
+							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
+						<br />
+						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
+					</p>
+				</div>
+			</div>
+		</article>
+
+		<article class="media">
+			<figure class="media-left">
+				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+				</p>
+			</figure>
+			<div class="media-content">
+				<div class="content">
+					<p>
+						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
+						<br />
+							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
+						<br />
+						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
+					</p>
+				</div>
+			</div>
+		</article>
+	</div>
+	{% endblock %}
 
 	<!--Chart.js-->
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -199,44 +190,5 @@
 			}
 		});
 	</script>
-
-<!-- Code injected by live-server -->
-<script>
-	// <![CDATA[  <-- For SVG support
-	if ('WebSocket' in window) {
-		(function () {
-			function refreshCSS() {
-				var sheets = [].slice.call(document.getElementsByTagName("link"));
-				var head = document.getElementsByTagName("head")[0];
-				for (var i = 0; i < sheets.length; ++i) {
-					var elem = sheets[i];
-					var parent = elem.parentElement || head;
-					parent.removeChild(elem);
-					var rel = elem.rel;
-					if (elem.href && typeof rel != "string" || rel.length == 0 || rel.toLowerCase() == "stylesheet") {
-						var url = elem.href.replace(/(&|\?)_cacheOverride=\d+/, '');
-						elem.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_cacheOverride=' + (new Date().valueOf());
-					}
-					parent.appendChild(elem);
-				}
-			}
-			var protocol = window.location.protocol === 'http:' ? 'ws://' : 'wss://';
-			var address = protocol + window.location.host + window.location.pathname + '/ws';
-			var socket = new WebSocket(address);
-			socket.onmessage = function (msg) {
-				if (msg.data == 'reload') window.location.reload();
-				else if (msg.data == 'refreshcss') refreshCSS();
-			};
-			if (sessionStorage && !sessionStorage.getItem('IsThisFirstTime_Log_From_LiveServer')) {
-				console.log('Live reload enabled.');
-				sessionStorage.setItem('IsThisFirstTime_Log_From_LiveServer', true);
-			}
-		})();
-	}
-	else {
-		console.error('Upgrade your browser. This Browser is NOT supported WebSocket for Live-Reloading.');
-	}
-	// ]]>
-</script>
 </body>
 </html>
