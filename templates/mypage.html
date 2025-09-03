@@ -1,15 +1,18 @@
+{% extends "base.html" %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
-	<title>Home</title>
+	<title>{% block title %}My Page{% endblock %}</title>
 </head>
 <body class="container is-max-desktop">
 		<section class="page section is-large">
-			<!--프로필-->
+			{% block content %}
+			<!--프로필 & 목표설정-->
 			<div class="columns">
+				<!--프로필-->
 				<div class="column">
 					<div class="box">
 						<!--Profile-->
@@ -21,16 +24,18 @@
 								</div>
 								<div class="media-content">
 								<div class="content">
-									<strong>Hyunz</strong> <small>@백준아이디</small>
+									<strong>@{{baekjoon_id}}</strong>
 									&nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded">300pt</strong>
 									<br>
-									Today    1<br>
-									Total    100<br>
-									Rank    Gold<br>
-									<span class="tag is-danger">Very Hard</span>&nbsp&nbsp1&nbsp
-									<span class="tag is-warning">Hard</span>&nbsp&nbsp2&nbsp
-									<span class="tag is-success">Normal</span>&nbsp&nbsp6&nbsp
-									<span class="tag is-link">Easy</span>&nbsp&nbsp3&nbsp
+									Today    {{today_amount}}<br>
+									Total    {{total_amount}}<br>
+									Rank    {{tier}}<br>
+									<span class="tag is-danger">{{Ruby}}</span>&nbsp&nbsp&nbsp
+									<span class="tag is-white">{{Diamond}}</span>&nbsp&nbsp&nbsp
+									<span class="tag is-success">{{Platinum}}</span>&nbsp&nbsp&nbsp
+									<span class="tag is-info">{{Gold}}</span>&nbsp&nbsp&nbsp
+									<span class="tag is-link">{{Silver}}</span>&nbsp&nbsp&nbsp
+									<span class="tag is-warning is-dark">{{Bronze}}</span>&nbsp&nbsp&nbsp
 									<!--chart-->
 									<div class="chartContainer_ container">
 										<div>
@@ -44,24 +49,43 @@
 						</article>
 					</div>
 				</div>
+				<!--목표설정-->
 				<div class="column">
-					<!--취약점 메모-->
-					<div class="type_">
+					{% if goal_amount is none %}
+					<div class="type_ box">
+						<!--목표 설정하기-->
 						<article class="message">
 							<div class="message-header">
-								<p>Hyunz</p>
+								<p>오늘의 목표 해결 문제 수</p>
 							</div>
-							<div class="message-body">
-								<strong><a>취약점</a></strong><br>
-								<strong>정렬</strong> - 특히 버블정렬 관련 알고리즘 연습이 필요합니다.<br>
-								<strong>컴퓨터 구조</strong> - 컴퓨터 구조 관련 이론 지식이 빈약합니다.
+							<form action="{{ url_for('submit_goal') }}" method="post">
+							<div class="control">
+								<input name="goal_amount" class="input is-focused" type="text" placeholder="Focused input" />
+								<div class="has-text-right">
+									<button class="button" type="submit">확인</button>
+								</div>
+							</div>
+							</form>
+						</article>
+						{% else %}
+						<!--설정된 목표 조회-->
+						<article class="message">
+							<div class="message-header">
+								<h3>오늘의 현황</h3>
+							</div>
+							<div class="box">
+								<table class="table">
+									<tr>
+										<th>Goal</th>
+										<th>Achieved</th>
+									</tr>
+										<td>{{goal_amount}}</td>
+										<td>{{today_amount}}</td>
+								</table>
 							</div>
 						</article>
+						{% endif %}
 					</div>
-				</div>
-				
-				<div class="graph_">
-
 				</div>
 			</div>
 
@@ -151,6 +175,7 @@
 					</div>
 				</article>
 			</div>
+			{% endblock %}
 		</section>
 
 	<!--Chart.js-->

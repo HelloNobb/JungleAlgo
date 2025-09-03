@@ -1,3 +1,4 @@
+{% extends "base.html" %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,6 +9,7 @@
 </head>
 <body class="container is-max-desktop">
 		<section class="page section is-large">
+			{% block content %}
 			<div class="reviews_ box">
 				<!--my review box-->
 				<article class="media">
@@ -104,7 +106,8 @@
 					</div>
 				</div>
 			</article>
-
+			{% endblock %}
+		</section>
 	<!--Chart.js-->
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 	<!--fontawsome : icon용-->
