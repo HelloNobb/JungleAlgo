@@ -2,6 +2,7 @@ from urllib.parse import _ResultMixinBytes
 import requests
 import json
 import re
+import time
 
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
@@ -9,6 +10,8 @@ import pytz
 from flask import Flask, render_template, jsonify, request
 from pymongo import MongoClient
 from pymongo.errors import CollectionInvalid
+import threading
+import os
 app = Flask(__name__)
 
 client = MongoClient('localhost', 27017)
@@ -28,20 +31,7 @@ solved_log.create_index([('baekjoon_id', 1), ('problem_id', 1)], unique=True)
 solved_log.create_index([('baekjoon_id', 1), ('solved_at', -1)])
 solved_log.create_index([('baekjoon_id', 1), ('tier', 1)])
 
-# solved.ac 이력 넣을 경우 중복 제거 가능 
-# def upsert_solved_log(baekjoon_id, problem_id, title, tier, solved_at, is_reviewed=False, review_point=0, tags=None):
-#     solved_log.update_one(
-#         {'baekjoon_id': baekjoon_id, 'problem_id': problem_id},
-#         {'$setOnInsert': {'title': title},
-#          '$set': {
-#             'tier': tier,
-#             'solved_at': solved_at,        # UTC datetime
-#             'is_reviewed': is_reviewed,
-#             'review_point': review_point,
-#             'tags': tags or []
-#          }},
-#         upsert=True
-#     )
+
 
 @app.route('/')
 def home():
@@ -113,8 +103,8 @@ def register():
         user_data = {
             'backjun_id': backjun_id,
             'rank': int(backjun_rank),
-            'backjun_correct': backjun_correct,
-            'backjun_failed': backjun_failed,
+            'backjun_correct': 0,
+            'backjun_failed': 0,
             'created_at': datetime.now()
         }
 
@@ -190,13 +180,238 @@ def readProfile(bj):
         }
     })
 
-# TODO : 전체 유저 1시간 주기 업데이트 기능 추가 예정
-@app.route('/api/backjun/update_usersProfile', methods=["POST"])
-def update_usersProfile():
 
-    return
+# 사용자 데이터 업데이트 구현
+HEADERS = {'User-Agent': 'Mozilla/5.0 (compatible; JungleAlgoBot/1.0)'}
+
+def kst_today_range():
+    kst = pytz.timezone('Asia/Seoul')
+    now_kst = datetime.now(kst)
+    start_kst = now_kst.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_kst = start_kst + timedelta(days=1)
+    return start_kst, end_kst
+
+def fetch_status_html(user_id):
+    url = f'https://www.acmicpc.net/status?problem_id=&user_id={user_id}&language_id=-1&result_id=-1'
+    resp = requests.get(url, headers=HEADERS, timeout=10)
+    if resp.status_code != 200:
+        return None
+    return resp.text
+
+def parse_status_rows_today(user_id):
+    html = fetch_status_html(user_id)
+    if not html:
+        return []
+
+    start_kst, end_kst = kst_today_range()
+    soup = BeautifulSoup(html, 'html.parser')
+    table = soup.select_one('#status-table') or soup.select_one('table#status-table') or soup.select_one('table.table') or soup.select_one('table')
+    if not table:
+        return []
+
+    items = []
+    for tr in table.select('tr'):
+        tds = tr.find_all('td')
+        if not tds:
+            continue
+
+        # 문제 ID: 문제 링크를 직접 탐색
+        problem_link = tr.select_one('a[href^="/problem/"]')
+        if not problem_link:
+            continue
+        problem_id_text = problem_link.get_text(strip=True)
+        if not problem_id_text.isdigit():
+            continue
+        problem_id = int(problem_id_text)
+
+        # 결과 텍스트: 행 전체에서 텍스트 검색 (맞았습니다!! 등 변형 대응)
+        row_text = tr.get_text(" ", strip=True)
+        if '맞았습니다' not in row_text:
+            continue
+
+        # 제출 시간: .real-time-update 가진 요소에서 data-timestamp 추출 (a/span 대응)
+        ts_el = tr.select_one('.real-time-update')
+        ts = ts_el.get('data-timestamp') if ts_el else None
+        if not ts or not str(ts).isdigit():
+            # 보조: 행의 어떤 요소라도 data-timestamp를 갖고 있으면 사용
+            any_ts_el = tr.select_one('[data-timestamp]')
+            ts = any_ts_el.get('data-timestamp') if any_ts_el else None
+        if not ts or not str(ts).isdigit():
+            continue
+
+        kst = pytz.timezone('Asia/Seoul')
+        utc_dt = datetime.utcfromtimestamp(int(ts)).replace(tzinfo=pytz.UTC)
+        kst_dt = utc_dt.astimezone(kst)
+
+        # 오늘(KST)만
+        if not (start_kst <= kst_dt < end_kst):
+            continue
+
+        items.append({
+            'problem_id': problem_id,
+            'solved_at_utc': utc_dt,
+            'date_kst': kst_dt.strftime('%Y-%m-%d')
+        })
+    return items
+
+def upsert_today_submissions(user_id, items):
+    updated = 0
+    for it in items:
+        # 날짜별 기록을 원하면 unique를 (baekjoon_id, problem_id, date)로 운영하세요.
+        # 현재 인덱스가 (baekjoon_id, problem_id)인 경우에는 같은 문제는 하루 1회만 유지됨.
+        solved_log.update_one(
+            {'baekjoon_id': user_id, 'problem_id': it['problem_id']},
+            {'$setOnInsert': {'title': None, 'difficulty': None},
+             '$set': {
+                 'date': it['date_kst'],
+                 'solved_at': it['solved_at_utc'],
+                 'result': 'correct',
+                 'review': False
+             },
+             '$inc': {'submission_count': 1}},
+            upsert=True
+        )
+        updated += 1
+    return updated
+
+@app.route('/api/backjun/update_status/<user_id>', methods=['POST'])
+def update_status_user(user_id):
+    try:
+        items = parse_status_rows_today(user_id)
+        cnt = upsert_today_submissions(user_id, items)
+        return jsonify({'success': True, 'user_id': user_id, 'updated': cnt})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@app.route('/api/backjun/update_status_all', methods=['POST'])
+def update_status_all():
+    try:
+        total = update_all_users_once()
+        return jsonify({'success': True, 'updated_total': total})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 
-if __name__ == '__main__':  
-   app.run('0.0.0.0', port=5001, debug=True)
+
+
+def update_all_users_once():
+    users = users_collection.find({}, {'_id': 0, 'backjun_id': 1})
+    total = 0
+    for u in users:
+        uid = u.get('backjun_id')
+        if not uid:
+            continue
+        items = parse_status_rows_today(uid)
+        total += upsert_today_submissions(uid, items)
+        time.sleep(1.0)  # 과도한 요청 방지
+    return total
+
+
+# --- 프로필(사용자 정보) 업데이트 ---
+def fetch_user_profile(user_id):
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.86 Safari/537.36'}
+    resp = requests.get(f'https://www.acmicpc.net/user/{user_id}', headers=headers, timeout=10)
+    if resp.status_code != 200:
+        return None
+    soup = BeautifulSoup(resp.text, 'html.parser')
+    stats_table = soup.select_one('#statics > tbody')
+    if not stats_table:
+        return None
+    result = {}
+    rows = stats_table.select('tr')
+    for row in rows:
+        th = row.select_one('th')
+        td = row.select_one('td')
+        if th and td:
+            key = th.get_text(strip=True)
+            value = td.get_text(strip=True)
+            result[key] = value
+    rank_text = result.get('등수')
+    try:
+        rank = int(rank_text) if rank_text is not None else None
+    except ValueError:
+        rank = None
+    return {
+        'rank': rank,
+        'backjun_correct': result.get('맞은 문제'),
+        'backjun_failed': result.get('시도했지만 맞지 못한 문제')
+    }
+
+
+def update_user_profile(user_id):
+    data = fetch_user_profile(user_id)
+    if not data:
+        return False
+    users_collection.update_one(
+        {'backjun_id': user_id},
+        {'$set': {
+            'rank': data.get('rank'),
+            'backjun_correct': data.get('backjun_correct'),
+            'backjun_failed': data.get('backjun_failed'),
+            'updated_at': datetime.utcnow()
+        }}
+    )
+    return True
+
+
+def update_all_users_profile_once():
+    users = users_collection.find({}, {'_id': 0, 'backjun_id': 1})
+    updated = 0
+    for u in users:
+        uid = u.get('backjun_id')
+        if not uid:
+            continue
+        if update_user_profile(uid):
+            updated += 1
+        time.sleep(1.0)
+    return updated
+
+
+@app.route('/api/backjun/update_users_profile_all', methods=['POST'])
+def update_users_profile_all():
+    try:
+        cnt = update_all_users_profile_once()
+        return jsonify({'success': True, 'updated_profiles': cnt})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+def seconds_until_next_kst_hour():
+    kst = pytz.timezone('Asia/Seoul')
+    now_kst = datetime.now(kst)
+    next_hour = (now_kst.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1))
+    return max(1, int((next_hour - now_kst).total_seconds()))
+
+
+_scheduler_started = False
+
+
+def _scheduler_loop():
+    while True:
+        try:
+            sleep_sec = seconds_until_next_kst_hour()
+            time.sleep(sleep_sec)
+            # 1) 모든 유저 프로필 최신화
+            update_all_users_profile_once()
+            # 2) 오늘 푼 문제 집계/업서트
+            update_all_users_once()
+        except Exception:
+            # 에러는 무시하고 다음 라운드로 진행
+            time.sleep(5)
+
+
+def start_scheduler_once():
+    global _scheduler_started
+    if _scheduler_started:
+        return
+    _scheduler_started = True
+    t = threading.Thread(target=_scheduler_loop, name='hourly-updater', daemon=True)
+    t.start()
+
+
+if __name__ == '__main__':
+    # 재로더로 인한 중복 실행 방지
+    if not os.environ.get('WERKZEUG_RUN_MAIN') or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        start_scheduler_once()
+    app.run('0.0.0.0', port=5001, debug=True)
