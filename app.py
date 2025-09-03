@@ -39,7 +39,18 @@ solved_log = db['solved_log']
 # solved_log.create_index([('baekjoon_id', 1), ('solved_at', -1)])
 # solved_log.create_index([('baekjoon_id', 1), ('tier', 1)])
 
-app.config['JWT_SECRET_KEY'] = "myAlgorithmJWT"
+#app.config['JWT_SECRET_KEY'] = "myAlgorithmJWT"
+app.config.update(
+    DEBUG=True,
+    # JWT에만 사용될 시크릿 키
+    JWT_SECRET_KEY="myAlgorithmJWT",
+    # bcrypt의 난이도 설정
+    BCRYPT_LEVEL=10,
+    # JWT 토큰 위치 설정 (헤더와 쿠키 모두 허용)
+    JWT_TOKEN_LOCATION=['headers', 'cookies'],
+    JWT_ACCESS_COOKIE_NAME='access_token_cookie',
+    JWT_COOKIE_CSRF_PROTECT=False
+)
 
 # 홈/로그인 ============= ================
 @app.route('/')
@@ -60,8 +71,8 @@ def login():
     if memo and bcrypt.check_password_hash(memo['hashed_password'], password_receive):
         # 로그인 성공 → JWT 발급
         access_token = create_access_token(identity=id_receive, expires_delta=timedelta(minutes=30))
-        # JSON 응답 대신 마이페이지로 리다이렉트 (쿠키에 저장하거나 프론트에서 처리)
-        return redirect(url_for("mypage"))
+        # JSON 응답으로 JWT 토큰 반환
+        return jsonify({"result": "success", "access_token": access_token})
     return jsonify({"result": "fail", "msg": "아이디 또는 비밀번호 오류"})
 
 # 회원가입 ============= ================
@@ -79,21 +90,56 @@ def checkid():
         return jsonify({"result": "fail", "msg": "이미 존재하는 아이디입니다."})
     return jsonify({"result": "success"})
 
+@app.route("/signuppage/signup", methods=["POST"])
+def signup():
+    #                data: {userid_give: userid, useremail_give: useremail, password_give: password}, // data라는 이름으로 userid와 useremail, useremailadress, password를 줄게
+    # 1. 클라이언트로부터 데이터를 받기
+    id_receive = request.form['userid_give']  # 클라이언트로부터 id를 받는 부분
+    email_receive = request.form['useremail_give']  # 클라이언트로부터 이메일을 받는 부분
+    password_receive = request.form['password_give']  # 클라이언트로부터 비밀번호를 받는 부분
+    hashed_password = bcrypt.generate_password_hash(password_receive)
+    # 보안을 위해 password_receive를 사용 후 삭제합니다.
+    del password_receive
+    
+    memos = {'id':id_receive, 'email': email_receive, 'hashed_password': hashed_password}
+
+    # 2. mongoDB에 데이터를 넣기
+    db.memos.insert_one(memos)
+
+    return jsonify({'result': 'success'})
+
 # 마이페이지 ============= ================
 @app.route('/mypage')
-@jwt_required()   # 로그인한 사람만 접근 허용
+@jwt_required()
 def mypage():
+    
+    # JWT 토큰 검증
     c_user = get_jwt_identity()
     if not c_user:
         return redirect(url_for("loginpage"))
+    # return redirect(url_for("loginpage"))
     
-    res = db.users.find_one({"backjun_id":c_user})
-    return render_template( ### db에서 불러오기
+    # 사용자 정보 조회 (memos 컬렉션에서)
+    user_info = db.memos.find_one({"id": c_user})
+    if not user_info:
+        return redirect(url_for("loginpage"))
+    
+    # 백준 사용자 정보 조회 (users 컬렉션에서)
+    res = db.users.find_one({"backjun_id": c_user})
+    
+    # 오늘 푼 문제 수 계산
+    today_problems = parse_status_rows_today(c_user)
+    today_amount = len(today_problems) if today_problems else 0
+    
+    # 총 문제 수 (백준 정보가 있으면 사용, 없으면 0)
+    total_amount = res.get('backjun_correct', 0) if res else 0
+    
+    return render_template(
 		"mypage.html",
 		activate_tab="mypage",
 		baekjoon_id=c_user,
-		today_amount=parse_status_rows_today(c_user).len(),
-		total_amount=res.backjun_correct,
+		today_amount=today_amount,
+		total_amount=total_amount,
 		tier="Ruby",
 		goal_amount=None,
 		Ruby=0, Diamond=0, Platinum=0, Gold=0, Silver=0, Bronze=0
@@ -162,7 +208,11 @@ def parse_status_rows_today(user_id):
         })
     return items
 
-	@app.route('/reviews')
+@app.route('/rank')
+def rank():
+    return render_template("rank.html", activate_tab="rank")
+
+##============================
     
 ## db에서 데이터 가져오는 함수들 ()==================
 def get_today_amount(user):
@@ -174,7 +224,7 @@ def get_today_amount(user):
 
     
 @app.route("/reviews")
-def go_reviews():
+def reviews():
     return render_template("reviews.html", activate_tab="reviews")
 
 # 해당 유저의 오늘 푼 문제에 대한 ID, 시간, 날짜 데이터 파싱>>>> return items
@@ -239,10 +289,15 @@ def parse_status_rows_today(user_id):
 @app.route('/api/register', methods=["POST"])
 def register():
     try:
-        # TODO : 사용자 정보 가져와서 url에 동적으로 입력해줘야 함.
-        # data = request.get_json()
-        # backjun_id = data.get('backjun_id')
+        # 사용자 정보 가져오기
+        data = request.get_json()
+        backjun_id = data.get('backjun_id')
         
+        if not backjun_id:
+            return jsonify({
+                'success': False,
+                'message': '백준 ID가 필요합니다.'
+            }), 400
         
         # 1. 먼저 중복 체크
         existing_user = users_collection.find_one({"backjun_id": backjun_id})
@@ -642,4 +697,3 @@ if __name__ == '__main__':
     if not os.environ.get('WERKZEUG_RUN_MAIN') or os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
         start_scheduler_once()
     app.run('0.0.0.0', port=5001, debug=True)
-	
