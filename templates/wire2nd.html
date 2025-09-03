@@ -1,0 +1,165 @@
+<!-- 저장해야 할것 
+업로드 시간
+문제 번호
+별점
+리뷰
+올린 사람 ID
++난이도
+-->
+<!DOCTYPE html>
+<html lang="ko">
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <meta charset="utf-8">
+    <title>Reviews|Algorithm</title>
+    <style type="text/css">
+        *{
+            padding: 0;
+            margin: 0;
+/*            border: none;*/
+        }
+        body{
+            font-size: 14px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .wrap {
+                width: 900px;
+                margin: 100px auto;
+                box-sizing: border-box;
+            }
+        input {
+            box-sizing: border-box;
+        }
+        button {
+            border: none;
+        }
+        .level-1 a {
+            color: #2ecc71; /* 초록색: 난이도 1 */
+        }
+
+        .level-2 a {
+            color: #f1c40f; /* 노랑색: 난이도 2 */
+        }
+
+        .level-3 a {
+            color: #e67e22; /* 주황색: 난이도 3 */
+        }
+
+        .level-4 a {
+            color: #e74c3c; /* 빨강색: 난이도 4 */
+        }
+        .button-container {
+            display: flex; /* Flexbox 활성화 */
+            justify-content: flex-end; /* 오른쪽 끝으로 정렬 */
+        }
+        .rating-stars {
+        cursor: pointer; /* 마우스 커서를 손가락 모양으로 변경 */
+        }
+
+        .rating-stars .star {
+        color: #ccc; /* 기본 별 색상을 회색으로 설정 */
+        font-size: 24px;
+        transition: color 0.2s; /* 색상 변화에 애니메이션 효과 추가 */
+        }
+
+        .rating-stars .star:hover,
+        .rating-stars .star:hover ~ .star {
+        color: #f1c40f; /* 마우스를 올리면 노란색으로 변경 */
+        }
+
+        .rating-stars.selected .star {
+        color: #f1c40f; /* 별점이 선택된 상태일 때 노란색으로 */
+        }
+    </style>
+    <script>
+            $(document).ready(function () {
+                $("#cards-box").html("");
+                showMemos();
+            });
+            
+            function postMemo() {
+                let userid = id;
+                let bojid = $("#memo-bojid").val();
+                let date = Date.now();
+                let review = $("#memo-review").val();
+
+                // 2. memo에 POST 방식으로 메모 생성 요청하기
+                $.ajax({
+                    type: "POST", // POST 방식으로 요청하겠다.
+                    url: "/memo", // /memo라는 url에 요청하겠다.
+                    data: {userid_give:userid, bojid_give:bojid, date_give:date, review_give:review}, // 데이터를 주는 방법
+                    success: function (response) { // 성공하면
+                        if (response["result"] == "success") {
+                            alert("포스팅 성공!");
+                            // 3. 성공 시 페이지 새로고침하기
+                            window.location.reload();
+                        } else {
+                            alert("문제 풀이 확인 실패")
+                        }
+                    }
+                })
+            }
+
+            function showMemos() {
+                $.ajax({
+                    type: "GET",
+                    url: "/memo",
+                    data: {},
+                    success: function (response) {
+                        let memos = response["memos"];
+                        console.log(memos);
+                        for (let i = 0; i < memos.length; i++) {
+                            makeCard(memos[i]["userid"], memos[i]["level"], memos[i]["bojid"], memos[i]["star"], memos[i]["review"]);
+                        }
+                    }
+                })
+            }
+
+            function makeCard(userid,level,bojid,star,review) {
+                // 별 이모지를 담을 변수 선언
+                let starEmojis = '';
+                // star 변수 값만큼 별 이모지를 추가하는 반복문
+                for (let j = 0; j < star; j++) {
+                    starEmojis += '⭐';
+                }
+                // level 값에 따라 동적으로 클래스 이름을 생성
+                let levelClass = `level-${level}`;
+                let tempHtml = 
+                `<div class="card">
+                    <div class="card-body">
+                        <strong>${userid}</strong> ->
+                        <span class="card-title ${levelClass}"><a href="https://www.acmicpc.net/problem/${bojid}">${bojid}</a></span>
+                        <span class="card-content">${level}</span>
+                        <span class="card-like">${starEmojis}</span>
+                    </div>`;
+                $(`#cards-box`).append(tempHtml);
+            }
+
+
+        </script>
+
+    </head>
+
+    <body>
+        <div class="wrap">
+            <div class="jumbotron" style="border: 1px solid black;">
+                <h1 class="display-4">리뷰 등록</h1>
+                <input id="memo-bojid" style="width: 10%; height: 40px;" class="form-control mb-2" placeholder="문제 ID">
+                <span class="rating-stars">
+                    <span class="star" data-value="1">⭐</span>
+                    <span class="star" data-value="2">⭐</span>
+                    <span class="star" data-value="3">⭐</span>
+                    <span class="star" data-value="4">⭐</span>
+                    <span class="star" data-value="5">⭐</span>
+                    </span>
+                <br>
+                <textarea id="memo-review" style="width: 100%;height: 100px;" class="form-control" rows="2" placeholder="리뷰를 입력하세요"></textarea>
+                
+                <div class="button-container">
+                    <button type="button" class="btn button is-success" onclick="postMemo()">저장하기</button>
+                </div>
+                <!-- 문제 번호를 토대로 서버에서 난이도도 같이 저장 -->
+            </div>
+        </div>
+</html>
