@@ -23,12 +23,15 @@
 							Today    {{today_amount}}<br>
 							Total    {{total_amount}}<br>
 							Rank    {{tier}}<br>
-							<span class="tag is-danger">{{Ruby}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-white">{{Diamond}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-success">{{Platinum}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-info">{{Gold}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-link">{{Silver}}</span>&nbsp&nbsp&nbsp
-							<span class="tag is-warning is-dark">{{Bronze}}</span>&nbsp&nbsp&nbsp
+							<!-- Jinja2로 difficulty_counts 표시 -->
+							{% if difficulty_counts %}
+								<span class="tag is-danger">Ruby: {{difficulty_counts.Ruby or 0}}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-white">Diamond: {{difficulty_counts.Diamond or 0}}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-success">Platinum: {{difficulty_counts.Platinum or 0}}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-info">Gold: {{difficulty_counts.Gold or 0}}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-link">Silver: {{difficulty_counts.Silver or 0}}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-warning is-dark">Bronze: {{difficulty_counts.Bronze or 0}}</span>&nbsp&nbsp&nbsp
+							{% endif %}
 							<!--chart-->
 							<div class="chartContainer_ container">
 								<div>

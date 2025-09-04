@@ -23,10 +23,11 @@ jwt = JWTManager(app)
 client = MongoClient('localhost', 27017)
 db = client.jungle_algo
 
-users_collection = db.users
 
 # 컬렉션 정의 및 생성/인덱스
 solved_log = db['solved_log']
+users_collection = db['users']
+
 # try:
 #     db.create_collection('solved_log')
 # except CollectionInvalid:
@@ -132,6 +133,21 @@ def mypage():
     # 총 문제 수 (백준 정보가 있으면 사용, 없으면 0)
     total_amount = res.get('backjun_correct', 0) if res else 0
     
+    # difficulty_counts 가져오기
+    difficulty_counts = res.get('difficulty_counts', {
+        'Bronze': 0,
+        'Silver': 0,
+        'Gold': 0,
+        'Platinum': 0,
+        'Diamond': 0
+    }) if res else {
+        'Bronze': 0,
+        'Silver': 0,
+        'Gold': 0,
+        'Platinum': 0,
+        'Diamond': 0
+    }
+    
     return render_template(
 		"mypage.html",
 		activate_tab="mypage",
@@ -140,7 +156,13 @@ def mypage():
 		total_amount=total_amount,
 		tier="Ruby",
 		goal_amount=None,
-		Ruby=0, Diamond=0, Platinum=0, Gold=0, Silver=0, Bronze=0
+		difficulty_counts=difficulty_counts,
+		Ruby=difficulty_counts.get('Ruby', 0), 
+		Diamond=difficulty_counts.get('Diamond', 0), 
+		Platinum=difficulty_counts.get('Platinum', 0), 
+		Gold=difficulty_counts.get('Gold', 0), 
+		Silver=difficulty_counts.get('Silver', 0), 
+		Bronze=difficulty_counts.get('Bronze', 0)
 	)
 def fetch_status_html(user_id):
     url = f'https://www.acmicpc.net/status?problem_id=&user_id={user_id}&language_id=-1&result_id=-1'
@@ -322,6 +344,11 @@ def register():
         soup = BeautifulSoup(response.text, 'html.parser')
         stats_table = soup.select_one('#statics > tbody')
         
+        # # 디버깅을 위한 로그
+        # print(f"백준 ID: {backjun_id}")
+        # print(f"응답 상태코드: {response.status_code}")
+        # print(f"stats_table 존재 여부: {stats_table is not None}")
+        
         if not stats_table:
             return jsonify({
                 'success': False,
@@ -342,9 +369,31 @@ def register():
                    result[key] = value
 
         # 사용자 데이터 저장
-        backjun_rank = result.get('등수')
-        backjun_correct = result.get('맞은 문제')
-        backjun_failed = result.get('시도했지만 맞지 못한 문제')
+        backjun_rank = result.get('등수', '0')
+        backjun_correct = result.get('맞은 문제', '0')
+        backjun_failed = result.get('시도했지만 맞지 못한 문제', '0')
+
+        # 백준에서 가져온 데이터를 숫자로 변환 (콤마 제거)
+        try:
+            backjun_rank = int(backjun_rank.replace(',', '')) if backjun_rank else 0
+            backjun_correct = int(backjun_correct.replace(',', '')) if backjun_correct else 0
+            backjun_failed = int(backjun_failed.replace(',', '')) if backjun_failed else 0
+        except (ValueError, AttributeError):
+            backjun_rank = 0
+            backjun_correct = 0
+            backjun_failed = 0
+
+        # total 값 계산 (solved_log에서 해당 사용자의 전체 제출 개수)
+        total = solved_log.count_documents({'baekjoon_id': backjun_id})
+
+        # difficulty_counts 초기화 (Bronze, Silver, Gold, Platinum, Diamond)
+        difficulty_counts = {
+            'Bronze': 0,
+            'Silver': 0,
+            'Gold': 0,
+            'Platinum': 0,
+            'Diamond': 0
+        }
 
         # 랭크 여부 확인 굳이 필요할지? 없으면 false로 설정해도 될듯?
         # if not backjun_rank:
@@ -355,10 +404,12 @@ def register():
 
         user_data = {
             'backjun_id': backjun_id,
-            'rank': int(backjun_rank),
-            'backjun_correct': 0,
-            'backjun_failed': 0,
-            'today_goal' : 0,
+            'rank': backjun_rank,
+            'backjun_correct': backjun_correct,
+            'backjun_failed': backjun_failed,
+            'total': total,
+            'difficulty_counts': difficulty_counts,
+            'today_goal': 0,
             'created_at': datetime.now()
         }
 
@@ -371,9 +422,10 @@ def register():
             'inserted_id': str(addUser.inserted_id),
             'user_data': {
                 'backjun_id': backjun_id,
-                'rank': int(backjun_rank),
+                'rank': backjun_rank,
                 'backjun_correct': backjun_correct,
-                'backjun_failed': backjun_failed
+                'backjun_failed': backjun_failed,
+                'total': total
             }
         })
         
@@ -409,11 +461,21 @@ def readProfile(bj):
         {'$group': {'_id': None, 'review_point': {'$sum': '$review_point'}}}
     ]))
     review_point = agg[0]['review_point'] if agg else 0
-    difficulty_counts = list(solved_log.aggregate([
-        {'$match': {'baekjoon_id': bj}},
-        {'$group': {'_id': '$difficulty', 'count': {'$sum': 1}}},
-        {'$sort': {'_id': 1}}
-    ]))
+    # users 컬렉션에서 difficulty_counts 가져오기 (성능 개선)
+    user_doc = users_collection.find_one({'backjun_id': bj}, {'difficulty_counts': 1})
+    difficulty_counts = user_doc.get('difficulty_counts', {
+        'Bronze': 0,
+        'Silver': 0,
+        'Gold': 0,
+        'Platinum': 0,
+        'Diamond': 0
+    }) if user_doc else {
+        'Bronze': 0,
+        'Silver': 0,
+        'Gold': 0,
+        'Platinum': 0,
+        'Diamond': 0
+    }
 
     # 간단 랭킹
     rank_cursor = users_collection.find({}, {'_id': 0, 'backjun_id': 1, 'problem_point': 1, 'review_point': 1})
@@ -627,16 +689,54 @@ def update_user_profile(user_id):
     data = fetch_user_profile(user_id)
     if not data:
         return False
+    # total 값 계산 (예: solved_log에서 해당 사용자의 전체 제출 개수)
+    total = solved_log.count_documents({'baekjoon_id': user_id})
+    
+    # difficulty_counts 계산 (solved_log에서 집계)
+    difficulty_counts = list(solved_log.aggregate([
+        {'$match': {'baekjoon_id': user_id}},
+        {'$group': {'_id': '$difficulty', 'count': {'$sum': 1}}},
+        {'$sort': {'_id': 1}}
+    ]))
+    
+    # difficulty_counts를 객체 형태로 변환
+    difficulty_dict = {
+        'Bronze': 0,
+        'Silver': 0,
+        'Gold': 0,
+        'Platinum': 0,
+        'Diamond': 0
+    }
+    
+    for item in difficulty_counts:
+        difficulty = item['_id']
+        count = item['count']
+        if difficulty in difficulty_dict:
+            difficulty_dict[difficulty] = count
+    
     users_collection.update_one(
         {'backjun_id': user_id},
         {'$set': {
             'rank': data.get('rank'),
             'backjun_correct': data.get('backjun_correct'),
             'backjun_failed': data.get('backjun_failed'),
+            'total': total,
+            'difficulty_counts': difficulty_dict,
             'updated_at': datetime.utcnow()
         }}
     )
     return True
+
+
+def update_user_difficulty_count(user_id, difficulty):
+    """새 문제 제출 시 해당 사용자의 difficulty_counts 업데이트"""
+    if not difficulty:
+        return
+    
+    users_collection.update_one(
+        {'backjun_id': user_id},
+        {'$inc': {f'difficulty_counts.{difficulty}': 1}}
+    )
 
 
 def update_all_users_profile_once():
