@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "vue-bulma-chartjs": "^1.0.5"
+  }
+}

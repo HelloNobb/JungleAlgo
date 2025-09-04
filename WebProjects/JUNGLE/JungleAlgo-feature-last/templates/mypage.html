@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}My Page{% endblock %}
+
+	{% block content %}
+	<!--프로필 & 목표설정-->
+	<div class="columns">
+		<!--프로필-->
+		<div class="column">
+			<div class="box">
+				<!--Profile-->
+				<article class="media">
+					<div class="media-left">
+						<figure class="image is-128x128">
+							<img src="https://bulma.io/assets/images/placeholders/128x128.png" />
+						</figure>
+						</div>
+						<div class="media-content">
+						<div class="content">
+							<strong>@{{ baekjoon_id }}</strong>
+							&nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded">300pt</strong>
+							<br>
+							Today    {{ today_amount }}<br>
+							Total    {{ total_amount }}<br>
+							Rank    {{ tier }}<br>
+							<!-- Jinja2로 difficulty_counts 표시 -->
+							{% if difficulty_counts %}
+								<span class="tag is-danger">Ruby: {{ difficulty_counts.Ruby or 0 }}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-white">Diamond: {{ difficulty_counts.Diamond or 0 }}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-success">Platinum: {{ difficulty_counts.Platinum or 0 }}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-info">Gold: {{ difficulty_counts.Gold or 0 }}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-link">Silver: {{ difficulty_counts.Silver or 0 }}</span>&nbsp&nbsp&nbsp
+								<span class="tag is-warning is-dark">Bronze: {{ difficulty_counts.Bronze or 0 }}</span>&nbsp&nbsp&nbsp
+							{% endif %}
+							<!--chart-->
+							<div class="chartContainer_ container">
+								<div>
+									<div>
+										<canvas id="chart-container"></canvas>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</article>
+			</div>
+		</div>
+				<!--목표설정-->
+		<div class="column">
+			
+			<div class="type_ box">
+				{% if not goal_amount %}
+				<!--목표 설정하기-->
+				<article class="message">
+					<div class="message-header">
+						<p>오늘의 목표 해결 문제 수</p>
+					</div>
+					<form method="post" action="{{ url_for('set_goal') }}" id="goal-form">
+					<div class="control">
+						<input name="goal_amount" class="input is-focused" type="number" placeholder="목표 문제 수 입력" min="1" max="100" required />
+						<div class="has-text-right">
+							<button class="button" type="submit">확인</button>
+						</div>
+					</div>
+					</form>
+				</article>
+				{% else %}
+				<!--설정된 목표 조회-->
+				<article class="message">
+					<div class="message-header">
+						<h3>오늘의 현황</h3>
+					</div>
+					<div class="box">
+						<table class="table">
+							<tr>
+								<th>Goal</th>
+								<th>Achieved</th>
+							</tr>
+							<tr>
+								<td>{{ goal_amount }}</td>
+								<td>{{ today_amount }}</td>
+							</tr>
+							<tr>
+								{% set percent = (today_amount / goal_amount * 100) | round(0, 'floor') %}
+								<td colspan="2">
+									<progress class="progress is-link" value="{{ percent }}" max="100">{{ percent }}%</progress>
+								</td>
+							</tr>
+						</table>
+					</div>
+				</article>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	<!--검색기능-->
+	<div>
+		<!-- Main container -->
+		<nav class="level">
+			<!-- Left side -->
+			<div class="level-left">
+				<div class="level-item">
+				<p class="subtitle is-5"><strong id="posts-count">0</strong> posts</p>
+				</div>
+				<div class="level-item">
+				<div class="field has-addons">
+					<p class="control">
+					<input class="input" type="text" placeholder="문제번호로 검색" />
+					</p>
+					<p class="control">
+					<button class="button">Search</button>
+					</p>
+				</div>
+				</div>
+			</div>
+
+			<!-- Right side -->
+			<div class="level-right">
+				<p class="level-item"><a class="button is-success">New</a></p>
+			</div>
+		</nav>
+	</div>
+	<!--코드 리뷰-->
+	<div class="reviews_ box" id="reviews-container">
+		<!-- 리뷰가 여기에 동적으로 로드됩니다 -->
+	</div>
+	{% endblock %}
+
+	<!--Chart.js-->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+	<!--fontawsome : icon용-->
+	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
+	<script type="module">
+		const userId = "{{ baekjoon_id }}";
+		//API 호출 (user_id는 로그인한 아이디로 교체)
+		async function drawChart(){
+			try{
+				const res = await fetch(`/api/stats/weekly/${userId}`);
+				const data = await res.json();
+
+				if (!data.success){
+					console.error("api 오류", data.message);
+					return;
+				}
+				const counts = data.daily.map(d => d.count);
+				//Chart.js
+				const ctx = document.getElementById('chart-container').getContext('2d');
+				new Chart(ctx,{
+					type: 'line',
+					data: {
+					labels: ['월', '화', '수', '목', '금', '토', '일'], // 요일 고정
+					datasets: [{
+						label: 'Weekly',
+						borderWidth: 3,
+						data: counts // API에서 온 7개 count 값
+					}]
+				}});
+			} catch(err){
+				console.error("차트로드실패",err);
+			}
+			
+		}
+		window.addEventListener("DOMContentLoaded", () => {
+    		drawChart();
+    		loadReviews();
+  		});
+		
+		// 리뷰 로드 함수
+		async function loadReviews() {
+			try {
+				const token = localStorage.getItem("access_token");
+				const headers = {
+					'Content-Type': 'application/json'
+				};
+				if (token) {
+					headers['Authorization'] = `Bearer ${token}`;
+				}
+				
+				const res = await fetch('/api/reviews/show', {
+					method: 'GET',
+					headers: headers
+				});
+				
+				if (res.ok) {
+					const data = await res.json();
+					if (data.result === "success") {
+						const reviews = data.reviews;
+						const currentUserId = data.current_user_id;
+						
+						// posts 개수 업데이트
+						document.getElementById('posts-count').textContent = reviews.length;
+						
+						// 리뷰 컨테이너 초기화
+						const container = document.getElementById('reviews-container');
+						container.innerHTML = '';
+						
+						// 리뷰가 없으면 메시지 표시
+						if (reviews.length === 0) {
+							container.innerHTML = '<p class="has-text-centered">아직 작성된 리뷰가 없습니다.</p>';
+							return;
+						}
+						
+						// 각 리뷰를 HTML로 렌더링
+						reviews.forEach(review => {
+							const reviewElement = createReviewElement(review, currentUserId);
+							container.appendChild(reviewElement);
+						});
+					}
+				}
+			} catch (error) {
+				console.error('리뷰 로드 실패:', error);
+				document.getElementById('reviews-container').innerHTML = '<p class="has-text-centered">리뷰를 불러오는 중 오류가 발생했습니다.</p>';
+			}
+		}
+		
+		// 리뷰 HTML 요소 생성 함수
+		function createReviewElement(review, currentUserId) {
+			const article = document.createElement('article');
+			article.className = 'media';
+			
+			// 별점 HTML 생성
+			let starHtml = '';
+			for (let i = 0; i < review.star; i++) {
+				starHtml += '★';
+			}
+			for (let i = review.star; i < 5; i++) {
+				starHtml += '☆';
+			}
+			
+			// 본인 리뷰인지 확인
+			const isOwner = review.backjun_id === currentUserId;
+			const editDeleteButtons = isOwner ? 
+				`<small><a onclick="editReview(this)">Edit</a> · <a onclick="deleteReview(this)">Delete</a> · ${review.review_date}</small>` :
+				`<small class="review-date-text">${review.review_date}</small>`;
+			
+			article.innerHTML = `
+				<figure class="media-left">
+					<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+				</figure>
+				<div class="media-content">
+					<div class="content">
+						<p>
+							<strong>code no.<a href="https://www.acmicpc.net/problem/${review.problem_id}">${review.problem_id}</a></strong>
+							<span class="stars_" style="float: right;">
+								@${review.backjun_id} ${starHtml}
+							</span>
+						</p>
+						${review.review_text}
+						<br />
+						${editDeleteButtons}
+					</div>
+				</div>
+			`;
+			
+			return article;
+		}
+		
+		// 목표 설정 폼 처리
+		document.addEventListener('DOMContentLoaded', function() {
+			const goalForm = document.getElementById('goal-form');
+			if (goalForm) {
+				goalForm.addEventListener('submit', function(e) {
+					const goalInput = this.querySelector('input[name="goal_amount"]');
+					const goalValue = parseInt(goalInput.value);
+					
+					if (!goalValue || goalValue < 1 || goalValue > 100) {
+						e.preventDefault();
+						alert('목표 문제 수는 1-100 사이의 숫자를 입력해주세요.');
+						return false;
+					}
+					
+					// 로딩 표시
+					const submitBtn = this.querySelector('button[type="submit"]');
+					submitBtn.textContent = '설정 중...';
+					submitBtn.disabled = true;
+				});
+			}
+		});
+		
+	</script>
+</body>
+</html>

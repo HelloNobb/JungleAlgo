@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css"/>
+    <title>Home</title>
+  </head>
+  <body class="container is-max-desktop">
+    <div class="notification">
+      <section class="category">
+        <div class="tabs is-centered is-boxed">
+          <ul>
+            <li class="{% if active_tab=='mypage'%}is-active{% endif %}">
+              <a href="{{ url_for('mypage') }}"> <!--해당이름함수에 연결된 url 자동 찾아줌 -->
+                <span>My Page</span>
+              </a>
+            </li>
+            <li class="{% if active_tab=='reviews'%}is-active{% endif %}">
+              <a href="{{ url_for('reviews') }}">
+                <span>Reviews</span>
+              </a>
+            </li>
+            <li class="{% if active_tab=='rank'%}is-active{% endif %}">
+              <a href="{{ url_for('rank') }}">
+                <span>Rank</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+      <section class="page section is-large">
+        {% block content %}
+        <h2>내용을 불러오지 못함</h2>
+        {% endblock %}
+      </section>
+    </div>
+    <footer class="footer">
+      <div class="content has-text-centered">
+        <p><strong>Jungle Algorithm</strong> by team <strong>H</strong></p>
+      </div>
+    </footer>
+  </body>
+</html>
