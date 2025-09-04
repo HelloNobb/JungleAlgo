@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, render_template_string, request, jsonify, redirect, url_for
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -133,7 +133,10 @@ def mypage():
     
     # 총 문제 수 (백준 정보가 있으면 사용, 없으면 0)
     total_amount = res.get('backjun_correct', 0) if res else 0
-    
+
+    reviews=list(db.solved_log.find({"backjun_id": c_user}, {'_id': False}).sort([("review_date", -1)]))
+    review_count = len(reviews)
+
     return render_template(
 		"mypage.html",
 		activate_tab="mypage",
@@ -142,8 +145,34 @@ def mypage():
 		total_amount=total_amount,
 		tier="Ruby",
 		goal_amount=None,
-		Ruby=0, Diamond=0, Platinum=0, Gold=0, Silver=0, Bronze=0
+		Ruby=0, Diamond=0, Platinum=0, Gold=0, Silver=0, Bronze=0,
+        reviews=reviews,
+        review_count=review_count
 	)
+
+@app.route('/search_reviews', methods=["POST"])
+@jwt_required()
+def search_reviews():
+    # AJAX 요청으로 받은 검색어를 가져옵니다.
+    query = request.form.get("query", "")
+    if not query:
+        return jsonify({"result": "fail", "msg": "검색어를 입력해 주세요."})
+    
+    c_user = get_jwt_identity()
+
+    # 문제 번호만 검색하는 쿼리
+    # 숫자를 문자열로 변환하여 정확히 일치하는 문서를 찾습니다.
+    search_reviews = list(db.solved_log.find({
+        "backjun_id": c_user,
+        "problem_id": query  # 🌟 문제 번호만 정확히 일치하는 문서 검색 🌟
+    }, {'_id': False}).sort([("review_date", -1)]))
+
+    if not search_reviews:
+        return jsonify({"result": "fail", "msg": "검색 결과가 없습니다."})
+    
+    # 검색 결과를 JSON 형식으로 반환합니다.
+    return jsonify({"result": "success", "reviews": search_reviews})
+
 def fetch_status_html(user_id):
     url = f'https://www.acmicpc.net/status?problem_id=&user_id={user_id}&language_id=-1&result_id=-1'
     resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -210,7 +239,9 @@ def parse_status_rows_today(user_id):
 
 @app.route('/rank')
 def rank():
-    return render_template("rank.html", activate_tab="rank")
+    return render_template('rank.html', top3_name=top3[2]['nickname'], top3_point=top3[2]['backjun_correct'],
+                                        top2_name=top3[1]['nickname'], top2_point=top3[1]['backjun_correct'],
+                                        top1_name=top3[0]['nickname'], top1_point=top3[0]['backjun_correct'],)
 
 ##============================
     
@@ -223,9 +254,83 @@ def get_today_amount(user):
     
 
     
-@app.route("/reviews")
+@app.route("/reviews2")
 def reviews():
-    return render_template("reviews.html", activate_tab="reviews")
+    return render_template("reviews2.html", activate_tab="reviews")
+
+@app.route('/api/reviews/create', methods=['POST'])
+@jwt_required()
+def create_review():
+    try:
+        now = datetime.now()
+        review_text=request.form['review_text']
+        problem_id=request.form['problem_id']
+        backjun_id = get_jwt_identity()
+        review_date=now.strftime('%Y-%m-%d-%H:%M:%S')
+        star = request.form['star']
+        difficulty = 'string' 
+        
+        #db에서 찾기
+        
+        # MongoDB에 리뷰 데이터 저장
+        db.solved_log.insert_one({
+            'review_text': review_text,
+            'problem_id': problem_id,
+            'backjun_id': backjun_id,
+            'review_date': review_date,
+            'star': star,
+            'difficulty': difficulty
+        })
+
+        return jsonify({'result': 'success'})
+    except Exception as e:
+            print(f"An error occurred: {e}")
+            return jsonify({"result": "error", "message": "Internal Server Error"}), 500
+
+from flask import request
+
+@app.route('/api/reviews/delete', methods=['DELETE'])
+@jwt_required()
+def delete_review():
+    problem_id = request.form.get("problem_id")
+
+    if not problem_id:
+        return jsonify({"result": "error", "message": "problem_id가 누락되었습니다."}), 400
+
+    backjun_id = get_jwt_identity()
+
+    result = db.solved_log.delete_one({'problem_id': problem_id, 'backjun_id': backjun_id})
+
+    if result.deleted_count > 0:
+        return jsonify({'result': 'success', 'message': '리뷰가 성공적으로 삭제되었습니다.'})
+    else:
+        return jsonify({'result': 'fail', 'message': '해당 리뷰를 찾을 수 없거나 삭제 권한이 없습니다.'}), 403
+
+@app.route('/api/reviews/update', methods=['POST'])
+@jwt_required()
+def update_review():
+    now = datetime.now()
+    problem_id = request.form['problem_id']
+    edited_text = request.form['edited_text']
+    edited_star = request.form['edited_star']
+    backjun_id = get_jwt_identity()
+    review_date=now.strftime('%Y-%m-%d-%H:%M:%S')
+
+    db.solved_log.update_one({'problem_id': problem_id, 'backjun_id': backjun_id}, {
+        '$set': {
+            'review_text': edited_text,
+            'star': edited_star,
+            'review_date': review_date
+        }
+    })
+
+    return jsonify({'result': 'success'})
+
+@app.route('/api/reviews/show', methods=['GET'])
+@jwt_required()
+def show_reviews():
+    result = list(db.solved_log.find({}, {'_id': False}).sort([("review_date", -1)]))
+    return jsonify({'result': 'success', 'reviews': result, 'current_user_id': get_jwt_identity()})
 
 # 해당 유저의 오늘 푼 문제에 대한 ID, 시간, 날짜 데이터 파싱>>>> return items
 def parse_status_rows_today(user_id):

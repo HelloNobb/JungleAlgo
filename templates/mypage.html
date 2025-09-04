@@ -89,15 +89,15 @@
 			<!-- Left side -->
 			<div class="level-left">
 				<div class="level-item">
-				<p class="subtitle is-5"><strong>123</strong> posts</p>
+				<p class="subtitle is-5"><strong>{{review_count}}</strong> posts</p>
 				</div>
 				<div class="level-item">
 				<div class="field has-addons">
 					<p class="control">
-					<input class="input" type="text" placeholder="문제번호로 검색" />
+					<input id="searchInput" class="input" type="text" placeholder="문제번호로 검색" />
 					</p>
 					<p class="control">
-					<button class="button">Search</button>
+					<button id="searchButton" class="button">Search</button>
 					</p>
 				</div>
 				</div>
@@ -110,85 +110,163 @@
 		</nav>
 	</div>
 	<!--코드 리뷰-->
-	<div class="reviews_ box">	
-		<article class="media">
-			<figure class="media-left">
-				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-				<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-				</p>
-			</figure>
-			<div class="media-content">
-				<div class="content">
-					<p>
-						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-						<br />
-							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-						<br />
-						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-					</p>
+	<div class="reviews_ box" id="review-list">	
+		{% for review in reviews %}
+			<article class="media">
+				<figure class="media-left">
+					<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+				</figure>
+				<div class="media-content">
+					<div class="content">
+						<p>
+							<strong>code no.<a href="https://www.acmicpc.net/problem/{{ review.problem_id }}">{{ review.problem_id }}</a></strong>
+							<br />
+							{{ review.review_text }}
+							<br />
+						</p>
+					</div>
 				</div>
-			</div>
-		</article>
-
-		<article class="media">
-			<figure class="media-left">
-				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-				<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-				</p>
-			</figure>
-			<div class="media-content">
-				<div class="content">
-					<p>
-						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-						<br />
-							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-						<br />
-						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-					</p>
-				</div>
-			</div>
-		</article>
-
-		<article class="media">
-			<figure class="media-left">
-				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-				</p>
-			</figure>
-			<div class="media-content">
-				<div class="content">
-					<p>
-						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-						<br />
-							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-						<br />
-						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-					</p>
-				</div>
-			</div>
-		</article>
+			</article>
+			{% endfor %}
 	</div>
 	{% endblock %}
-
+	
+	{% block scripts %}
 	<!--Chart.js-->
 	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 	<!--fontawsome : icon용-->
 	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 	<script>
+	document.addEventListener('DOMContentLoaded', () => {
+		console.log("DOM loaded, setting up search functionality");
+		
+		const searchButton = document.getElementById('searchButton');
+		const searchInput = document.getElementById('searchInput');
+		const reviewList = document.getElementById('review-list');
+		
+		console.log("Search button:", searchButton);
+		console.log("Search input:", searchInput);
+		console.log("Review list:", reviewList);
+
+		if (searchButton && searchInput && reviewList) {
+			searchButton.addEventListener('click', () => {
+				console.log("Search button clicked");
+				const query = searchInput.value;
+				console.log("Search query:", query);
+				
+				// 검색어가 있으면 검색, 없으면 모든 리뷰 조회
+				if (query) {
+					$.ajax({
+						url: '/search_reviews',
+						method: 'POST',
+						data: { query: query },
+						beforeSend: function(xhr) {
+							const token = localStorage.getItem("access_token");
+							if (token) {
+								xhr.setRequestHeader("Authorization", "Bearer " + token);
+							}
+						},
+						success: function(response) {
+							console.log("Search response:", response);
+							reviewList.innerHTML = ''; // 기존 목록을 비웁니다.
+							if (response.result === 'success' && response.reviews.length > 0) {
+								response.reviews.forEach(review => {
+									const html = `
+										<article class="media">
+											<figure class="media-left">
+												<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+											</figure>
+											<div class="media-content">
+												<div class="content">
+													<p>
+														<strong>code no.<a href="https://www.acmicpc.net/problem/${review.problem_id}">${review.problem_id}</a></strong>
+														<br />
+														${review.review_text}
+														<br />
+													</p>
+												</div>
+											</div>
+										</article>
+									`;
+									reviewList.innerHTML += html;
+								});
+							} else {
+								reviewList.innerHTML = '<p>검색 결과가 없습니다.</p>';
+							}
+						},
+						error: function(xhr, status, error) {
+							console.error("Search Error:", error);
+							alert("검색 중 오류가 발생했습니다.");
+						}
+					});
+				} else {
+					// 검색어가 없으면 모든 리뷰 조회
+					$.ajax({
+						url: '/api/reviews/show',
+						method: 'GET',
+						beforeSend: function(xhr) {
+							const token = localStorage.getItem("access_token");
+							if (token) {
+								xhr.setRequestHeader("Authorization", "Bearer " + token);
+							}
+						},
+						success: function(response) {
+							console.log("All reviews response:", response);
+							reviewList.innerHTML = ''; // 기존 목록을 비웁니다.
+							if (response.result === 'success' && response.reviews.length > 0) {
+								response.reviews.forEach(review => {
+									const html = `
+										<article class="media">
+											<figure class="media-left">
+												<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+											</figure>
+											<div class="media-content">
+												<div class="content">
+													<p>
+														<strong>code no.<a href="https://www.acmicpc.net/problem/${review.problem_id}">${review.problem_id}</a></strong>
+														<br />
+														${review.review_text}
+														<br />
+													</p>
+												</div>
+											</div>
+										</article>
+									`;
+									reviewList.innerHTML += html;
+								});
+							} else {
+								reviewList.innerHTML = '<p>등록된 리뷰가 없습니다.</p>';
+							}
+						},
+						error: function(xhr, status, error) {
+							console.error("All reviews Error:", error);
+							alert("리뷰 조회 중 오류가 발생했습니다.");
+						}
+					});
+				}
+			});
+		} else {
+			console.error("Required elements not found");
+		}
+		
 		//Chart.js 이용한 차트 출력
-		const chartEI = document.getElementById('chart-container').getContext('2d');
-		const barChart = new Chart(chartEI,{
-			type:'line',
-			data:{
-				labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-				datasets:[{
-					label:'Weekly',
-					borderWidth:3,
-					data:[
-						3, 2, 5, 0,2
-					]
-				}]
-			}
-		});
+		const chartEI = document.getElementById('chart-container');
+		if (chartEI) {
+			const barChart = new Chart(chartEI.getContext('2d'),{
+				type:'line',
+				data:{
+					labels:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+					datasets:[{
+						label:'Weekly',
+						borderWidth:3,
+						data:[
+							3, 2, 5, 0,2
+						]
+					}]
+				}
+			});
+		}
+	});
 	</script>
-</body>
-</html>
+	{% endblock %}

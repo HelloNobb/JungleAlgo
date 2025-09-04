@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.0/css/bulma.min.css">
+	<link rel="stylesheet" href="../static/css/reviews.css">
+	<title>Review</title>
+<!--Chart.js-->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+	<!--fontawsome : icon용-->
+	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
+	<script>
+		function SetReviewVisibleCount(n=3){
+		    const list= document.getElementById('reviews-list');
+		    if (!list) return;
+		    const items = list.querySelectorAll('article.media');
+		    if (!items.length) return;
+		    
+		    const gap = parseFloat(getComputedStyle(items[0]).marginBottom);
+		}
+	</script>
+<script>
+$(document).ready(function () {
+	$("#reviews-list").html("");
+	showReviews();
+});
+function createReview(){
+	const review_text = $('.textarea').val();
+	const star = $('#star_rating_select').val();
+	const problem_id = $('#problem_id_select').val();
+
+	// 서버에 새 리뷰를 POST 방식으로 전송
+	$.ajax({
+		type: "POST",
+		url: "/api/reviews/create", // 새 리뷰 생성 API 주소
+		data: {
+			review_text: review_text,
+			problem_id: problem_id,
+			star: star
+		},
+		beforeSend: function(xhr) {
+			const token = localStorage.getItem("access_token");
+			// 'Bearer ' 접두사를 꼭 붙여야 합니다.
+			if (token) {
+				xhr.setRequestHeader("Authorization", "Bearer " + token);
+			}
+		},
+		success: function (response) {
+			if (response.result === "success") {
+				alert("리뷰가 등록되었습니다!");
+				// 페이지 새로고침 또는 DOM을 다시 원래 상태로 복원
+				window.location.reload(); 
+			}
+		}
+	});
+}
+function editReview(button) {
+    // 1. 클릭된 버튼의 부모 엘리먼트(.media-content)를 찾기
+    const mediaContent = $(button).closest('.media-content');
+    
+    // 2. 기존의 Edit 및 Delete 버튼을 숨기기
+    $(button).closest('small').hide(); // 이 줄을 추가합니다.
+    
+    const originalContent = mediaContent.find('.content').clone();
+    originalContent.find('p').remove();
+    const edited_text = originalContent.text().trim();
+    const edited_star = mediaContent.find('.stars_').html();
+    const problem_id = mediaContent.find('.problem-id').text();
+	
+
+	const editHtml = `
+		<div class="content">
+			<div class="field">
+				<p class="is-flex is-justify-content-space-between is-align-items-center">
+                    <strong>code no.<a href="https://www.acmicpc.net/problem/${problem_id}">${problem_id}</a></strong>
+                </p>
+                <div class="control">
+                    <textarea class="textarea review-textarea">${edited_text}</textarea>
+                </div>
+			</div>
+			<div class="field is-grouped is-justify-content-space-between">
+				<div class="control">
+					<small id="editbutton"><a onclick="updateReview(this)">Save</a> · <a onclick="cancelEdit(this)">Cancel</a></small>
+				</div>
+				<div class="control">
+					<div class="select is-normal">
+						<select class="edit_rating_select">
+							<option value="5">★★★★★</option>
+							<option value="4">★★★★☆</option>
+							<option value="3">★★★☆☆</option>
+							<option value="2">★★☆☆☆</option>
+							<option value="1">★☆☆☆☆</option>
+							</option>
+						</select>
+					</div>
+				</div>
+			</div>
+		</div>
+	`;
+
+    // 3. 기존 내용을 수정 가능한 HTML로 교체
+    mediaContent.find('.content').html(editHtml);
+}
+function cancelEdit(button) {
+    // 페이지를 새로고침하여 원래 상태로 되돌림
+    window.location.reload();
+}
+function updateReview(button) {
+    const mediaContent = $(button).closest('.media-content');
+	const problem_id = mediaContent.find('.problem-id').text();
+    const edited_star = $('.edit_rating_select').val();
+    const edited_text = mediaContent.find('.review-textarea').val();
+
+    // 서버에 수정된 내용을 POST 또는 PUT 방식으로 전송
+    $.ajax({
+        type: "POST", // 또는 PUT
+        url: "/api/reviews/update", // 리뷰 업데이트 API 주소
+        data: {
+            problem_id: problem_id,
+            edited_text: edited_text,
+            edited_star: edited_star
+        },
+		beforeSend: function(xhr) {
+			const token = localStorage.getItem("access_token");
+			// 'Bearer ' 접두사를 꼭 붙여야 합니다.
+			if (token) {
+				xhr.setRequestHeader("Authorization", "Bearer " + token);
+			}
+		},
+        success: function (response) {
+            if (response.result === "success") {
+                alert("리뷰가 수정되었습니다!");
+                // 페이지 새로고침 또는 DOM을 다시 원래 상태로 복원
+                window.location.reload(); 
+            }
+        }
+    });
+}
+// 취소 버튼을 누르면 실행되는 함수
+
+function deleteReview(button) {
+    const mediaContent = $(button).closest('.media-content');
+    const problem_id = mediaContent.find('.problem-id').text();
+
+    $.ajax({
+        type: "DELETE",
+        url: "/api/reviews/delete",
+        // 데이터를 JSON 문자열로 변환
+        data: { problem_id: problem_id },
+        beforeSend: function(xhr) {
+            const token = localStorage.getItem("access_token");
+            if (token) {
+                xhr.setRequestHeader("Authorization", "Bearer " + token);
+            }
+        },
+        success: function (response) {
+            if (response.result === "success") {
+                alert("리뷰가 삭제되었습니다!");
+                window.location.reload();
+            } else {
+                alert(response.message);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.log("Error:", error);
+            alert("리뷰 삭제 실패!");
+        }
+    });
+}
+
+
+function showReviews() {
+	$.ajax({
+		type: "GET",
+		url: "/api/reviews/show",
+		data: {},
+		beforeSend: function(xhr) {
+			const token = localStorage.getItem("access_token");
+			// 'Bearer ' 접두사를 꼭 붙여야 합니다.
+			if (token) {
+				xhr.setRequestHeader("Authorization", "Bearer " + token);
+			}
+		},
+		success: function (response) {
+			let reviews = response["reviews"];
+			let current_user_id = response["current_user_id"];
+			let review_date = response["review_date"];
+			console.log(reviews);
+			$('#reviews-list').empty();
+			for (let i = 0; i < reviews.length; i++) {
+				makeReview(reviews[i]["problem_id"], reviews[i]["backjun_id"], reviews[i]["review_text"], reviews[i]["difficulty"], reviews[i]["star"], current_user_id, reviews[i]["review_date"]);
+			}
+		}
+	})
+}
+// 리뷰 하나를 HTML로 만들어서 reviews-list에 추가하는 함수
+function makeReview(problem_id, backjun_id, review_text, difficulty, star, current_user_id, review_date) {
+	let star_html = '';
+	for(let i=0; i<star; i++){
+		star_html += '★';
+	}
+	for(let i=star; i<5; i++){
+		star_html += '☆';
+	}
+	let tempHtml = 
+	`<article class="media my-review">
+		<figure class="media-left">
+			<p class="image is-64x64">
+			<img src="../static/img_icon.png" />
+			</p>
+		</figure>
+		<div class="media-content">
+			<div class="content">
+				<p class="is-flex is-justify-content-space-between is-align-items-center">
+					<strong>
+						code no.<a class="problem-id" href="https://www.acmicpc.net/problem/${problem_id}">${problem_id}</a>
+					</strong>
+					
+					<span class="stars_">
+						@${backjun_id}
+						${star_html}
+					</span>
+				</p>
+					${review_text}
+				<br/>
+			</div>
+			${backjun_id === current_user_id ? '<small id="editbutton"><a onclick="editReview(this)">Edit</a> · <a onclick="deleteReview(this)">Delete</a> · ' + review_date + '</small>' : '<small class="review-date-text">' + review_date + '</small>'}
+		</div>
+	</article>`;
+	$('#reviews-list').append(tempHtml);
+}
+</script>
+</head>
+<body class="container is-max-desktop">
+        <div class="notification">
+            <section class="category">
+                <div class="tabs is-centered is-boxed">
+                <ul>
+                    <li class="{% if active_tab=='mypage'%}is-active{% endif %}">
+                    <a href="{{ url_for('mypage') }}"> <!--해당이름함수에 연결된 url 자동 찾아줌 -->
+                        <span>My Page</span>
+                    </a>
+                    </li>
+                    <li class="{% if active_tab=='reviews'%}is-active{% endif %}">
+                    <a href="{{ url_for('reviews') }}">
+                        <span>Reviews</span>
+                    </a>
+                    </li>
+                    <li class="{% if active_tab=='rank'%}is-active{% endif %}">
+                    <a href="{{ url_for('rank') }}">
+                        <span>Rank</span>
+                    </a>
+                    </li>
+                </ul>
+                </div>
+            </section>
+            <section class="page section is-large">
+			    <!--reviewed boxes section-->
+			    <div class="reviews-scroll-box" id="reviews-list">
+                </div>
+            </section>
+
+			<!--reviewing section-->
+			<div class="media">
+				<figure class="media-left">
+					<p class="image is-64x64">
+					<img src="../static/img_icon.png" />
+					</p>
+				</figure>
+				<div class="media-content">
+					
+					<div class="field">
+						<p class="control">
+							<textarea class="textarea" placeholder="Post your own review.."></textarea>
+						</p>
+					</div>
+					<div class="field is-grouped is-justify-content-space-between">
+						<!--question no.-->
+						<div class="control">
+							<div class="select is-normal">
+								<select id="problem_id_select">
+									<option>1111</option>
+									<option>672</option>
+								</select>
+							</div>
+						</div>
+						<div class="control">
+							<div class="select is-normal">
+								<select id="star_rating_select">
+									<option value="5">★★★★★</option>
+									<option value="4">★★★★☆</option>
+									<option value="3">★★★☆☆</option>
+									<option value="2">★★☆☆☆</option>
+									<option value="1">★☆☆☆☆</option>
+									</option>
+								</select>
+							</div>
+						</div>
+						<!--post bttn-->
+						<div class="field">
+							<p class="control">
+								<button class="button" onclick = "createReview()">Post comment</button>
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+        </div>
+    <footer class="footer">
+    <div class="content has-text-centered">
+        <p><strong>Jungle Algorithm</strong> by team <strong>H</strong></p>
+    </div>
+    </footer>
+</body>
+
+</html>
