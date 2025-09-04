@@ -111,38 +111,39 @@ def signup():
 @app.route('/mypage')
 @jwt_required()
 def mypage():
-    
     # JWT 토큰 검증
     c_user = get_jwt_identity()
     if not c_user:
         return redirect(url_for("loginpage"))
-    # return redirect(url_for("loginpage"))
     
-    # 사용자 정보 조회 (memos 컬렉션에서)
-    user_info = db.memos.find_one({"id": c_user})
-    if not user_info:
-        return redirect(url_for("loginpage"))
+    user_info = users_collection.find_one({"backjun_id": c_user})
+    #today
+    kst = pytz.timezone('Asia/Seoul')
+    today_str = datetime.now(kst).strftime("%Y-%m-%d")
+
+    # goal_amount 기본값 설정
+    goal_amount = None
     
-    # 백준 사용자 정보 조회 (users 컬렉션에서)
-    res = db.users.find_one({"backjun_id": c_user})
+    if user_info and "today_goal" in user_info:
+        tg = user_info["today_goal"]
+        if tg.get("date") == today_str:
+            goal_amount = tg.get("goal_amount")
     
     # 오늘 푼 문제 수 계산
     today_problems = parse_status_rows_today(c_user)
     today_amount = len(today_problems) if today_problems else 0
-    
-    # 총 문제 수 (백준 정보가 있으면 사용, 없으면 0)
-    total_amount = res.get('backjun_correct', 0) if res else 0
     
     return render_template(
 		"mypage.html",
 		activate_tab="mypage",
 		baekjoon_id=c_user,
 		today_amount=today_amount,
-		total_amount=total_amount,
+		total_amount="?",
 		tier="Ruby",
-		goal_amount=None,
-		Ruby=0, Diamond=0, Platinum=0, Gold=0, Silver=0, Bronze=0
+		goal_amount=goal_amount,
+		Ruby=0, Diamond=0, Platinum=0, Gold=0, Silver=0, Bronze=0,
 	)
+    
 def fetch_status_html(user_id):
     url = f'https://www.acmicpc.net/status?problem_id=&user_id={user_id}&language_id=-1&result_id=-1'
     resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -211,7 +212,26 @@ def parse_status_rows_today(user_id):
 def rank():
     return render_template("rank.html", activate_tab="rank")
 
-##============================
+## input > pot/get 받기============================
+@app.route('/set_goal', methods=["POST"])
+@jwt_required()
+def set_goal():
+    c_user = get_jwt_identity()
+    if not c_user:
+        return redirect(url_for("loginpage"))
+    ## form 데이터 꺼내기
+    goal_amount = request.form.get("goal_amount", type=int)
+    ## 오늘날짜
+    kst = pytz.timezone('Asia/Seoul')
+    today_str = datetime.now(kst).strftime("%Y-%m-%d")
+    ## db 저장
+    users_collection.update_one(
+        {"backjun_id": c_user},
+        {"$set":{"today_goal":{"date":today_str, "goal_amount":goal_amount}}},
+        upsert = True
+    )
+    
+    return redirect(url_for("mypage"))
     
 ## db에서 데이터 가져오는 함수들 ()==================
 def get_today_amount(user):

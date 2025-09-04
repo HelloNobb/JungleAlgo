@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-\{% block title %}My Page{% endblock %}
+{% block title %}My Page{% endblock %}
 <style>
 	.chartContainer_{
 		position: relative;
@@ -9,6 +9,7 @@
 	}
 </style>
 	{% block content %}
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 	<!--프로필 & 목표설정-->
 	<div class="columns">
 		<!--프로필-->
@@ -44,18 +45,20 @@
 				</article>
 			</div>
 		</div>
+		
 		<!--목표설정-->
 		<div class="column">
-			{% if goal_amount is none %}
+			
 			<div class="type_ box">
+				{% if not goal_amount %}
 				<!--목표 설정하기-->
 				<article class="message">
 					<div class="message-header">
 						<p>오늘의 목표 해결 문제 수</p>
 					</div>
-					<form method="post">
+					<form method="post" action="{{ url_for('set_goal') }}">
 					<div class="control">
-						<input name="goal_amount" class="input is-focused" type="text" placeholder="Focused input" />
+						<input name="goal_amount" class="input is-focused" type="text" placeholder="목표 문제 수 입력" />
 						<div class="has-text-right">
 							<button class="button" type="submit">확인</button>
 						</div>
@@ -74,8 +77,14 @@
 								<th>Goal</th>
 								<th>Achieved</th>
 							</tr>
+							<tr>
 								<td>{{ goal_amount }}</td>
 								<td>{{ today_amount }}</td>
+							</tr>
+							<tr>
+								{% set percent = (today_amount / goal_amount * 100) | round(0, 'floor') %}
+								<progress class="progress is-link" value="15" max="100">{{ percent }}%</progress>
+							</tr>
 						</table>
 					</div>
 				</article>
@@ -103,11 +112,6 @@
 					</p>
 				</div>
 				</div>
-			</div>
-
-			<!-- Right side -->
-			<div class="level-right">
-				<p class="level-item"><a class="button is-success">New</a></p>
 			</div>
 		</nav>
 	</div>
@@ -168,13 +172,15 @@
 				</div>
 			</div>
 		</article>
+		{% endblock %}
 	</div>
-	{% endblock %}
+	
 
 	<!--Chart.js-->
-	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 	<!--fontawsome : icon용-->
 	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
+            
 	<script type="module">
 		const userId = "{{ baekjun_id }}";
 		//API 호출 (user_id는 로그인한 아이디로 교체)
@@ -205,10 +211,11 @@
 			}
 			
 		}
-		window.onload = () =>{
-			drawChart();
-		}
+		window.addEventListener("DOMContentLoaded", () => {
+    		drawChart();
+  		});
 		
 	</script>
+	
 </body>
 </html>
