@@ -383,10 +383,26 @@ def register():
             backjun_correct = 0
             backjun_failed = 0
 
+        # 기존 해결한 문제들을 solved_log에 추가
+        print(f"Fetching solved problems for {backjun_id}...")
+        solved_problem_ids = fetch_user_solved_problems(backjun_id)
+        
+        if solved_problem_ids:
+            print(f"Importing {len(solved_problem_ids)} solved problems...")
+            imported_count = import_user_solved_problems(backjun_id, solved_problem_ids)
+            print(f"Imported {imported_count} problems to solved_log")
+        
         # total 값 계산 (solved_log에서 해당 사용자의 전체 제출 개수)
         total = solved_log.count_documents({'baekjoon_id': backjun_id})
 
-        # difficulty_counts 초기화 (Bronze, Silver, Gold, Platinum, Diamond)
+        # difficulty_counts 계산 (solved_log에서 집계)
+        difficulty_counts_agg = list(solved_log.aggregate([
+            {'$match': {'baekjoon_id': backjun_id}},
+            {'$group': {'_id': '$difficulty', 'count': {'$sum': 1}}},
+            {'$sort': {'_id': 1}}
+        ]))
+        
+        # difficulty_counts를 객체 형태로 변환
         difficulty_counts = {
             'Bronze': 0,
             'Silver': 0,
@@ -394,6 +410,12 @@ def register():
             'Platinum': 0,
             'Diamond': 0
         }
+        
+        for item in difficulty_counts_agg:
+            difficulty = item['_id']
+            count = item['count']
+            if difficulty in difficulty_counts:
+                difficulty_counts[difficulty] = count
 
         # 랭크 여부 확인 굳이 필요할지? 없으면 false로 설정해도 될듯?
         # if not backjun_rank:
@@ -592,6 +614,73 @@ def get_problem_difficulty(problem_id):
     except Exception:
         return None
 
+
+def fetch_user_solved_problems(user_id):
+    """백준에서 사용자가 해결한 문제 목록을 가져옵니다."""
+    try:
+        url = f'https://solved.ac/api/v3/search/problem'
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; JungleAlgoBot/1.0)'}
+        
+        # solved.ac API를 사용하여 사용자가 해결한 문제 목록 가져오기
+        params = {
+            'query': f'solved_by:{user_id}',
+            'sort': 'solved',
+            'direction': 'desc',
+            'page': 1
+        }
+        
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        
+        if response.status_code != 200:
+            print(f"Failed to fetch solved problems for {user_id}: {response.status_code}")
+            return []
+            
+        data = response.json()
+        problems = data.get('items', [])
+        
+        # 문제 ID만 추출
+        problem_ids = [problem.get('problemId') for problem in problems if problem.get('problemId')]
+        
+        return problem_ids
+        
+    except Exception as e:
+        print(f"Error fetching solved problems for {user_id}: {e}")
+        return []
+
+
+def import_user_solved_problems(user_id, problem_ids):
+    """사용자의 기존 해결한 문제들을 solved_log에 추가합니다."""
+    imported_count = 0
+    
+    for problem_id in problem_ids:
+        try:
+            # 문제 난이도 가져오기
+            difficulty = get_problem_difficulty(problem_id)
+            
+            # solved_log에 추가 (중복 방지를 위해 upsert 사용)
+            solved_log.update_one(
+                {'baekjoon_id': user_id, 'problem_id': problem_id},
+                {'$setOnInsert': {
+                    'title': None,
+                    'date': datetime.now().strftime('%Y-%m-%d'),
+                    'solved_at': datetime.utcnow(),
+                    'result': 'correct',
+                    'review': False,
+                    'difficulty': difficulty,
+                    'submission_count': 1
+                }},
+                upsert=True
+            )
+            
+            imported_count += 1
+            time.sleep(0.1)  # API 호출 제한 방지
+            
+        except Exception as e:
+            print(f"Error importing problem {problem_id} for {user_id}: {e}")
+            continue
+    
+    return imported_count
+
 def upsert_today_submissions(user_id, items):
     updated = 0
     for it in items:
@@ -699,7 +788,6 @@ def update_user_profile(user_id):
         {'$sort': {'_id': 1}}
     ]))
     
-    # difficulty_counts를 객체 형태로 변환
     difficulty_dict = {
         'Bronze': 0,
         'Silver': 0,
