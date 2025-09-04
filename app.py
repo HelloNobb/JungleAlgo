@@ -236,7 +236,26 @@ def rank():
         user['rank'] = idx
     return render_template("rank.html", top3=top3)
 
-##============================
+## input > pot/get 받기============================
+@app.route('/set_goal', methods=["POST"])
+@jwt_required()
+def set_goal():
+    c_user = get_jwt_identity()
+    if not c_user:
+        return redirect(url_for("loginpage"))
+    ## form 데이터 꺼내기
+    goal_amount = request.form.get("goal_amount", type=int)
+    ## 오늘날짜
+    kst = pytz.timezone('Asia/Seoul')
+    today_str = datetime.now(kst).strftime("%Y-%m-%d")
+    ## db 저장
+    users_collection.update_one(
+        {"backjun_id": c_user},
+        {"$set":{"today_goal":{"date":today_str, "goal_amount":goal_amount}}},
+        upsert = True
+    )
+    
+    return redirect(url_for("mypage"))
     
 ## db에서 데이터 가져오는 함수들 ()==================
 def get_today_amount(user):
