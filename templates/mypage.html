@@ -1,224 +1,318 @@
-{% extends "base.html" %}
-
-{% block title %}My Page{% endblock %}
+{% extends "base.html" %} {% block title %}My Page{% endblock %}
 <style>
-	.chartContainer_{
-		position: relative;
-		width:100%;
-		height:300px;
-	}
+  .chartContainer_ {
+    position: relative;
+    width: 100%;
+    height: 300px;
+  }
 </style>
-	{% block content %}
-	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-	<!--프로필 & 목표설정-->
-	<div class="columns">
-		<!--프로필-->
-		<div class="column">
-			<div class="box">
-				<!--Profile-->
-				<article class="media">
-					<div class="media-left">
-						<figure class="image is-128x128">
-							<img src="https://bulma.io/assets/images/placeholders/128x128.png" />
-						</figure>
-						</div>
-						<div class="media-content">
-						<div class="content">
-							<strong>@{{ baekjun_id }}</strong>
-							&nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded">300pt</strong>
-							<br>
-							Today    {{today_amount}}<br>
-							Total    {{total_amount}}<br>
-							Rank    {{tier}}<br>
-							<!-- Jinja2로 difficulty_counts 표시 -->
-							{% if difficulty_counts %}
-								<span class="tag is-danger">Ruby: {{difficulty_counts.Ruby or 0}}</span>&nbsp&nbsp&nbsp
-								<span class="tag is-white">Diamond: {{difficulty_counts.Diamond or 0}}</span>&nbsp&nbsp&nbsp
-								<span class="tag is-success">Platinum: {{difficulty_counts.Platinum or 0}}</span>&nbsp&nbsp&nbsp
-								<span class="tag is-info">Gold: {{difficulty_counts.Gold or 0}}</span>&nbsp&nbsp&nbsp
-								<span class="tag is-link">Silver: {{difficulty_counts.Silver or 0}}</span>&nbsp&nbsp&nbsp
-								<span class="tag is-warning is-dark">Bronze: {{difficulty_counts.Bronze or 0}}</span>&nbsp&nbsp&nbsp
-							{% endif %}
-							<!--chart-->
-							<div class="chartContainer_ container">
-								<canvas id="chart-container"></canvas>
-							</div>
-						</div>
-					</div>
-				</article>
-			</div>
-		</div>
-		
-		<!--목표설정-->
-		<div class="column">
-			
-			<div class="type_ box">
-				{% if not goal_amount %}
-				<!--목표 설정하기-->
-				<article class="message">
-					<div class="message-header">
-						<p>오늘의 목표 해결 문제 수</p>
-					</div>
-					<form method="post" action="{{ url_for('set_goal') }}">
-					<div class="control">
-						<input name="goal_amount" class="input is-focused" type="text" placeholder="목표 문제 수 입력" />
-						<div class="has-text-right">
-							<button class="button" type="submit">확인</button>
-						</div>
-					</div>
-					</form>
-				</article>
-				{% else %}
-				<!--설정된 목표 조회-->
-				<article class="message">
-					<div class="message-header">
-						<h3>오늘의 현황</h3>
-					</div>
-					<div class="box">
-						<table class="table">
-							<tr>
-								<th>Goal</th>
-								<th>Achieved</th>
-							</tr>
-							<tr>
-								<td>{{ goal_amount }}</td>
-								<td>{{ today_amount }}</td>
-							</tr>
-							<tr>
-								{% set percent = (today_amount / goal_amount * 100) | round(0, 'floor') %}
-								<progress class="progress is-link" value="15" max="100">{{ percent }}%</progress>
-							</tr>
-						</table>
-					</div>
-				</article>
-				{% endif %}
-			</div>
-		</div>
-	</div>
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!--프로필 & 목표설정-->
+<div class="columns">
+  <!--프로필-->
+  <div class="column">
+    <div class="box">
+      <!--Profile-->
+      <article class="media">
+        <div class="media-left">
+          <figure class="image is-128x128">
+            <img
+              src="https://bulma.io/assets/images/placeholders/128x128.png"
+            />
+          </figure>
+        </div>
+        <div class="media-content">
+          <div class="content">
+            <strong>@{{ baekjun_id }}</strong>
+            &nbsp&nbsp&nbsp&nbsp&nbsp<strong class="tag is-rounded"
+              >300pt</strong
+            >
+            <br />
+            Today {{today_amount}}<br />
+            Total {{total_amount}}<br />
+            Rank {{tier}}<br />
+            <!-- Jinja2로 difficulty_counts 표시 -->
+            {% if difficulty_counts %}
+            <span class="tag is-danger"
+              >Ruby: {{difficulty_counts.Ruby or 0}}</span
+            >&nbsp&nbsp&nbsp
+            <span class="tag is-white"
+              >Diamond: {{difficulty_counts.Diamond or 0}}</span
+            >&nbsp&nbsp&nbsp
+            <span class="tag is-success"
+              >Platinum: {{difficulty_counts.Platinum or 0}}</span
+            >&nbsp&nbsp&nbsp
+            <span class="tag is-info"
+              >Gold: {{difficulty_counts.Gold or 0}}</span
+            >&nbsp&nbsp&nbsp
+            <span class="tag is-link"
+              >Silver: {{difficulty_counts.Silver or 0}}</span
+            >&nbsp&nbsp&nbsp
+            <span class="tag is-warning is-dark"
+              >Bronze: {{difficulty_counts.Bronze or 0}}</span
+            >&nbsp&nbsp&nbsp {% endif %}
+            <!--chart-->
+            <div class="chartContainer_ container">
+              <canvas id="chart-container"></canvas>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
 
-	<!--검색기능-->
-	<div>
-		<!-- Main container -->
-		<nav class="level">
-			<!-- Left side -->
-			<div class="level-left">
-				<div class="level-item">
-				<p class="subtitle is-5"><strong>123</strong> posts</p>
-				</div>
-				<div class="level-item">
-				<div class="field has-addons">
-					<p class="control">
-					<input class="input" type="text" placeholder="문제번호로 검색" />
-					</p>
-					<p class="control">
-					<button class="button">Search</button>
-					</p>
-				</div>
-				</div>
-			</div>
-		</nav>
-	</div>
-	<!--코드 리뷰-->
-	<div class="reviews_ box">	
-		<article class="media">
-			<figure class="media-left">
-				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-				<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-				</p>
-			</figure>
-			<div class="media-content">
-				<div class="content">
-					<p>
-						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-						<br />
-							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-						<br />
-						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-					</p>
-				</div>
-			</div>
-		</article>
+  <!--목표설정-->
+  <div class="column">
+    <div class="type_ box">
+      {% if not goal_amount %}
+      <!--목표 설정하기-->
+      <article class="message">
+        <div class="message-header">
+          <p>오늘의 목표 해결 문제 수</p>
+        </div>
+        <form method="post" action="{{ url_for('set_goal') }}">
+          <div class="control">
+            <input
+              name="goal_amount"
+              class="input is-focused"
+              type="text"
+              placeholder="목표 문제 수 입력"
+            />
+            <div class="has-text-right">
+              <button class="button" type="submit">확인</button>
+            </div>
+          </div>
+        </form>
+      </article>
+      {% else %}
+      <!--설정된 목표 조회-->
+      <article class="message">
+        <div class="message-header">
+          <h3>오늘의 현황</h3>
+        </div>
+        <div class="box">
+          <table class="table">
+            <tr>
+              <th>Goal</th>
+              <th>Achieved</th>
+            </tr>
+            <tr>
+              <td>{{ goal_amount }}</td>
+              <td>{{ today_amount }}</td>
+            </tr>
+            <tr>
+              {% set percent = (today_amount / goal_amount * 100) | round(0,
+              'floor') %}
+              <progress class="progress is-link" value="15" max="100">
+                {{ percent }}%
+              </progress>
+            </tr>
+          </table>
+        </div>
+      </article>
+      {% endif %}
+    </div>
+  </div>
+</div>
 
-		<article class="media">
-			<figure class="media-left">
-				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-				<!--img src="https://bulma.io/assets/images/placeholders/128x128.png" /-->
-				</p>
-			</figure>
-			<div class="media-content">
-				<div class="content">
-					<p>
-						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-						<br />
-							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-						<br />
-						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-					</p>
-				</div>
-			</div>
-		</article>
+<!--검색기능-->
+<div>
+  <!-- Main container -->
+  <nav class="level">
+    <!-- Left side -->
+    <div class="level-left">
+      <div class="level-item">
+        <p class="subtitle is-5"><strong>{{review_count}}</strong> posts</p>
+      </div>
+      <div class="level-item">
+        <div class="field has-addons">
+          <p class="control">
+            <input
+              id="searchInput"
+              class="input"
+              type="text"
+              placeholder="문제번호로 검색"
+            />
+          </p>
+          <p class="control">
+            <button id="searchButton" class="button">Search</button>
+          </p>
+        </div>
+      </div>
+    </div>
+  </nav>
+</div>
+<!--코드 리뷰-->
+<div class="reviews_ box" id="review-list">
+  {% for review in reviews %}
+  <article class="media">
+    <figure class="media-left">
+      <i class="fa-solid fa-user fa-xl" style="color: #b197fc"></i>
+    </figure>
+    <div class="media-content">
+      <div class="content">
+        <p>
+          <strong
+            >code no.<a
+              href="https://www.acmicpc.net/problem/{{ review.problem_id }}"
+              >{{ review.problem_id }}</a
+            ></strong
+          >
+          <br />
+          {{ review.review_text }}
+          <br />
+        </p>
+      </div>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %} {% block scripts %}
+<!--Chart.js-->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<!--fontawsome : icon용-->
+<script
+  src="https://kit.fontawesome.com/622135c32a.js"
+  crossorigin="anonymous"
+></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    console.log("DOM loaded, setting up search functionality");
 
-		<article class="media">
-			<figure class="media-left">
-				<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
-				</p>
-			</figure>
-			<div class="media-content">
-				<div class="content">
-					<p>
-						<strong>code no.<a href="https://www.acmicpc.net/problem/1000">1000</a></strong>
-						<br />
-							이 코드는 정말 최악이다. 여기에 쓴 내 시간이 너무 아깝다.
-						<br />
-						<small><a>Edit</a> · <a>Delete</a> · 3 hrs</small>
-					</p>
-				</div>
-			</div>
-		</article>
-		{% endblock %}
-	</div>
-	
+    const searchButton = document.getElementById("searchButton");
+    const searchInput = document.getElementById("searchInput");
+    const reviewList = document.getElementById("review-list");
 
-	<!--Chart.js-->
-	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-	<!--fontawsome : icon용-->
-	<script src="https://kit.fontawesome.com/622135c32a.js" crossorigin="anonymous"></script>
-            
-	<script type="module">
-		const userId = "{{ baekjun_id }}";
-		//API 호출 (user_id는 로그인한 아이디로 교체)
-		async function drawChart(){
-			try{
-				const res = await fetch(`/api/stats/weekly/${userId}`);
-				const data = await res.json();
+    console.log("Search button:", searchButton);
+    console.log("Search input:", searchInput);
+    console.log("Review list:", reviewList);
 
-				if (!data.success){
-					console.error("api 오류", data.message);
-					return;
-				}
-				const counts = data.daily.map(d => d.count);
-				//Chart.js
-				const ctx = document.getElementById('chart-container').getContext('2d');
-				new Chart(ctx,{
-					type: 'line',
-					data: {
-					labels: ['월', '화', '수', '목', '금', '토', '일'], // 요일 고정
-					datasets: [{
-						label: 'Weekly',
-						borderWidth: 3,
-						data: counts // API에서 온 7개 count 값
-					}]
-				}});
-			} catch(err){
-				console.error("차트로드실패",err);
-			}
-			
-		}
-		window.addEventListener("DOMContentLoaded", () => {
-    		drawChart();
-  		});
-		
-	</script>
-	
-</body>
-</html>
+    if (searchButton && searchInput && reviewList) {
+      searchButton.addEventListener("click", () => {
+        console.log("Search button clicked");
+        const query = searchInput.value;
+        console.log("Search query:", query);
+
+        // 검색어가 있으면 검색, 없으면 모든 리뷰 조회
+        if (query) {
+          $.ajax({
+            url: "/search_reviews",
+            method: "POST",
+            data: { query: query },
+            beforeSend: function (xhr) {
+              const token = localStorage.getItem("access_token");
+              if (token) {
+                xhr.setRequestHeader("Authorization", "Bearer " + token);
+              }
+            },
+            success: function (response) {
+              console.log("Search response:", response);
+              reviewList.innerHTML = ""; // 기존 목록을 비웁니다.
+              if (
+                response.result === "success" &&
+                response.reviews.length > 0
+              ) {
+                response.reviews.forEach((review) => {
+                  const html = `
+										<article class="media">
+											<figure class="media-left">
+												<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+											</figure>
+											<div class="media-content">
+												<div class="content">
+													<p>
+														<strong>code no.<a href="https://www.acmicpc.net/problem/${review.problem_id}">${review.problem_id}</a></strong>
+														<br />
+														${review.review_text}
+														<br />
+													</p>
+												</div>
+											</div>
+										</article>
+									`;
+                  reviewList.innerHTML += html;
+                });
+              } else {
+                reviewList.innerHTML = "<p>검색 결과가 없습니다.</p>";
+              }
+            },
+            error: function (xhr, status, error) {
+              console.error("Search Error:", error);
+              alert("검색 중 오류가 발생했습니다.");
+            },
+          });
+        } else {
+          // 검색어가 없으면 모든 리뷰 조회
+          $.ajax({
+            url: "/api/reviews/show",
+            method: "GET",
+            beforeSend: function (xhr) {
+              const token = localStorage.getItem("access_token");
+              if (token) {
+                xhr.setRequestHeader("Authorization", "Bearer " + token);
+              }
+            },
+            success: function (response) {
+              console.log("All reviews response:", response);
+              reviewList.innerHTML = ""; // 기존 목록을 비웁니다.
+              if (
+                response.result === "success" &&
+                response.reviews.length > 0
+              ) {
+                response.reviews.forEach((review) => {
+                  const html = `
+										<article class="media">
+											<figure class="media-left">
+												<i class="fa-solid fa-user fa-xl" style="color: #B197FC;"></i>
+											</figure>
+											<div class="media-content">
+												<div class="content">
+													<p>
+														<strong>code no.<a href="https://www.acmicpc.net/problem/${review.problem_id}">${review.problem_id}</a></strong>
+														<br />
+														${review.review_text}
+														<br />
+													</p>
+												</div>
+											</div>
+										</article>
+									`;
+                  reviewList.innerHTML += html;
+                });
+              } else {
+                reviewList.innerHTML = "<p>등록된 리뷰가 없습니다.</p>";
+              }
+            },
+            error: function (xhr, status, error) {
+              console.error("All reviews Error:", error);
+              alert("리뷰 조회 중 오류가 발생했습니다.");
+            },
+          });
+        }
+      });
+    } else {
+      console.error("Required elements not found");
+    }
+
+    //Chart.js 이용한 차트 출력
+    const chartEI = document.getElementById("chart-container");
+    if (chartEI) {
+      const barChart = new Chart(chartEI.getContext("2d"), {
+        type: "line",
+        data: {
+          labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          datasets: [
+            {
+              label: "Weekly",
+              borderWidth: 3,
+              data: [3, 2, 5, 0, 2],
+            },
+          ],
+        },
+      });
+    }
+  });
+</script>
+{% endblock %}

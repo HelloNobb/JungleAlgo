@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, render_template_string, request, jsonify, redirect, url_for
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
     JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -274,9 +274,83 @@ def get_today_amount(user):
     
 
     
-@app.route("/reviews")
+@app.route("/reviews2")
 def reviews():
-    return render_template("reviews.html", activate_tab="reviews")
+    return render_template("reviews2.html", activate_tab="reviews")
+
+@app.route('/api/reviews/create', methods=['POST'])
+@jwt_required()
+def create_review():
+    try:
+        now = datetime.now()
+        review_text=request.form['review_text']
+        problem_id=request.form['problem_id']
+        backjun_id = get_jwt_identity()
+        review_date=now.strftime('%Y-%m-%d-%H:%M:%S')
+        star = request.form['star']
+        difficulty = 'string' 
+        
+        #db에서 찾기
+        
+        # MongoDB에 리뷰 데이터 저장
+        db.solved_log.insert_one({
+            'review_text': review_text,
+            'problem_id': problem_id,
+            'backjun_id': backjun_id,
+            'review_date': review_date,
+            'star': star,
+            'difficulty': difficulty
+        })
+
+        return jsonify({'result': 'success'})
+    except Exception as e:
+            print(f"An error occurred: {e}")
+            return jsonify({"result": "error", "message": "Internal Server Error"}), 500
+
+from flask import request
+
+@app.route('/api/reviews/delete', methods=['DELETE'])
+@jwt_required()
+def delete_review():
+    problem_id = request.form.get("problem_id")
+
+    if not problem_id:
+        return jsonify({"result": "error", "message": "problem_id가 누락되었습니다."}), 400
+
+    backjun_id = get_jwt_identity()
+
+    result = db.solved_log.delete_one({'problem_id': problem_id, 'backjun_id': backjun_id})
+
+    if result.deleted_count > 0:
+        return jsonify({'result': 'success', 'message': '리뷰가 성공적으로 삭제되었습니다.'})
+    else:
+        return jsonify({'result': 'fail', 'message': '해당 리뷰를 찾을 수 없거나 삭제 권한이 없습니다.'}), 403
+
+@app.route('/api/reviews/update', methods=['POST'])
+@jwt_required()
+def update_review():
+    now = datetime.now()
+    problem_id = request.form['problem_id']
+    edited_text = request.form['edited_text']
+    edited_star = request.form['edited_star']
+    backjun_id = get_jwt_identity()
+    review_date=now.strftime('%Y-%m-%d-%H:%M:%S')
+
+    db.solved_log.update_one({'problem_id': problem_id, 'backjun_id': backjun_id}, {
+        '$set': {
+            'review_text': edited_text,
+            'star': edited_star,
+            'review_date': review_date
+        }
+    })
+
+    return jsonify({'result': 'success'})
+
+@app.route('/api/reviews/show', methods=['GET'])
+@jwt_required()
+def show_reviews():
+    result = list(db.solved_log.find({}, {'_id': False}).sort([("review_date", -1)]))
+    return jsonify({'result': 'success', 'reviews': result, 'current_user_id': get_jwt_identity()})
 
 # 해당 유저의 오늘 푼 문제에 대한 ID, 시간, 날짜 데이터 파싱>>>> return items
 def parse_status_rows_today(user_id):
